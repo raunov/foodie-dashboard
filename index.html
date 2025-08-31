@@ -71,6 +71,37 @@
                 transform: rotate(360deg);
             }
         }
+
+        .fullscreen-map {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 5000;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 5001;
+        }
+
+        .map-control-btn {
+            background-color: rgba(31, 41, 55, 0.75);
+            color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .map-control-btn:hover {
+            background-color: rgba(55, 65, 81, 0.9);
+        }
     </style>
 </head>
 
@@ -218,7 +249,14 @@
                                 <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-red)]"></span>€€€</div>
                             </div>
                         </div>
-                        <div id="foodie-map" class="h-[218px] bg-gray-800 rounded-lg overflow-hidden"></div>
+                        <div id="map-container" class="relative">
+                            <div id="foodie-map" class="h-[218px] bg-gray-800 rounded-lg overflow-hidden"></div>
+                            <div class="map-controls">
+                                <button id="fullscreen-btn" class="map-control-btn" title="Toggle Fullscreen">
+                                    <span class="material-symbols-outlined">fullscreen</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="lg:col-span-1 bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
@@ -461,6 +499,20 @@
                         style: 'mapbox://styles/mapbox/dark-v11', // Dark theme
                         center: [24.7536, 59.4370], // Tallinn, Estonia [lng, lat]
                         zoom: 12
+                    });
+
+                    document.getElementById('fullscreen-btn').addEventListener('click', () => {
+                        const mapContainer = document.getElementById('map-container');
+                        const isFullscreen = mapContainer.classList.toggle('fullscreen-map');
+                        
+                        // Update icon
+                        const icon = document.querySelector('#fullscreen-btn .material-symbols-outlined');
+                        icon.textContent = isFullscreen ? 'fullscreen_exit' : 'fullscreen';
+
+                        // Important: resize map after container has changed size
+                        setTimeout(() => {
+                            map.resize();
+                        }, 10); // A small delay ensures the container has resized
                     });
                 }
 
