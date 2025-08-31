@@ -4,7 +4,8 @@
   "description": "Serverless function to proxy Airtable requests for the Foodie Dashboard.",
   "main": "api/airtable.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tailwindcss -i ./src/input.css -o ./style.css"
   },
   "author": "",
   "license": "ISC",
