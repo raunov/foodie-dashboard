@@ -10,6 +10,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
+    <script>
+        // Redirect to login if not authenticated
+        if (document.cookie.indexOf('site_auth=true') === -1) {
+            window.location.href = '/login.html';
+        }
+    </script>
 </head>
 <body class="bg-[var(--background-color)]">
     <div id="loader-container">
@@ -54,6 +60,10 @@
                     <span class="material-symbols-outlined">settings</span>
                     <span>Settings</span>
                 </a>
+                <a id="logout-button" class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="#">
+                    <span class="material-symbols-outlined">logout</span>
+                    <span>Logout</span>
+                </a>
             </div>
         </aside>
         <main class="flex-1 p-4 sm:p-8 overflow-y-auto">
@@ -86,5 +96,22 @@
     </div>
 
     <script src="spending-page.js" type="module"></script>
+    <script>
+        document.getElementById('logout-button').addEventListener('click', async (event) => {
+            event.preventDefault();
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    window.location.href = '/login.html';
+                } else {
+                    console.error('Logout failed');
+                }
+            } catch (error) {
+                console.error('Failed to connect to the server for logout.');
+            }
+        });
+    </script>
 </body>
 </html>

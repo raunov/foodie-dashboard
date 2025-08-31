@@ -2,6 +2,7 @@
 // This file must be placed in the /api directory.
 
 const fetch = require('node-fetch');
+const { isAuthenticated } = require('./utils/auth');
 
 const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_RESTAURANT_VIEW_ID } = process.env;
 const TEGEVUSED_TABLE_NAME = 'Tegevused';
@@ -9,6 +10,10 @@ const RESTORAN_TABLE_NAME = 'Restoran';
 
 // The exported function is the handler for the serverless function.
 module.exports = async (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   // Ensure Airtable credentials are configured
   if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID || !AIRTABLE_RESTAURANT_VIEW_ID) {
     return res.status(500).json({ error: 'Airtable credentials are not fully configured on the server.' });
