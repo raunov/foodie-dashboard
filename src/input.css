@@ -107,6 +107,7 @@ body.body-no-scroll {
     top: 1rem;
     right: 1rem;
     cursor: pointer;
+    z-index: 10;
 }
 
 .tooltip-container .material-symbols-outlined {
@@ -136,6 +137,7 @@ body.body-no-scroll {
 .tooltip-container:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
+    position: relative;
 }
 
 @media (max-width: 768px) {

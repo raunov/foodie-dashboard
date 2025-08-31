@@ -69,14 +69,15 @@ export function calculateWeekdayProfile(records) {
 }
 
 export function calculateTimeOfDayMix(records) {
-    const mix = { 'Lunch (10-15)': 0, 'Dinner (18-22)': 0, 'Late (22-03)': 0, 'Other': 0 };
+    const mix = { 'Breakfast (06-10)': 0, 'Lunch (10-15)': 0, 'Dinner (18-22)': 0, 'Late (22-03)': 0, 'Other': 0 };
 
     records.forEach(record => {
         if (!record.fields.created_exif) return;
         const hour = new Date(record.fields.created_exif).getHours();
         const cost = record.fields.Kokku || 0;
 
-        if (hour >= 10 && hour < 15) mix['Lunch (10-15)'] += cost;
+        if (hour >= 6 && hour < 10) mix['Breakfast (06-10)'] += cost;
+        else if (hour >= 10 && hour < 15) mix['Lunch (10-15)'] += cost;
         else if (hour >= 18 && hour < 22) mix['Dinner (18-22)'] += cost;
         else if (hour >= 22 || hour < 3) mix['Late (22-03)'] += cost;
         else mix['Other'] += cost;
@@ -247,11 +248,15 @@ export function calculateAttachmentCoverage(records) {
     };
 }
 
-export function calculateCityMix(records) {
+export function calculateCityMix(records, excludeCity = null) {
     const cityTotals = {};
     let totalSpend = 0;
 
-    records.forEach(record => {
+    const filteredRecords = excludeCity 
+        ? records.filter(r => r.fields.Linn !== excludeCity)
+        : records;
+
+    filteredRecords.forEach(record => {
         const city = record.fields.Linn || 'Unknown';
         const cost = record.fields.Kokku || 0;
         cityTotals[city] = (cityTotals[city] || 0) + cost;
