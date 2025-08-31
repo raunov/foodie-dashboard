@@ -1,0 +1,6 @@
+{
+  "password": "MY_SECRET_PASSWORD",
+  "protectionBypass": {
+    "deployment": "PROTECTION_BYPASS_TOKEN"
+  }
+}
