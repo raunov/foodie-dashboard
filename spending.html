@@ -13,6 +13,9 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-[var(--background-color)]">
+    <div id="loader-container">
+        <div class="spinner"></div>
+    </div>
     <div class="flex min-h-screen">
         <aside class="w-64 bg-gray-900/50 p-6 flex-col justify-between hidden md:flex">
             <div>
@@ -22,14 +25,14 @@
                         <path d="M2 17l10 5 10-5"></path>
                         <path d="M2 12l10 5 10-5"></path>
                     </svg>
-                    <h1 class="text-xl font-bold text-white font-poppins">BillDash</h1>
+                    <div class="text-xl font-bold text-white font-poppins">BillDash</div>
                 </div>
                 <nav class="flex flex-col gap-2">
                     <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="index.html">
                         <span class="material-symbols-outlined">dashboard</span>
                         <span>Dashboard</span>
                     </a>
-                    <a class="flex items-center gap-3 px-4 py-2 rounded-md bg-[var(--primary-color)] text-white font-semibold" href="spending.html">
+                    <a class="flex items-center gap-3 px-4 py-2 rounded-md bg-[var(--primary-color)] text-white font-semibold" href="spending.html" aria-current="page">
                         <span class="material-symbols-outlined">payments</span>
                         <span>Spending</span>
                     </a>
@@ -55,9 +58,14 @@
             </div>
         </aside>
         <main class="flex-1 p-4 sm:p-8 overflow-y-auto">
-            <header class="mb-8">
-                <h1 class="text-3xl lg:text-4xl font-bold text-white font-poppins">Spending Insights</h1>
-                <p class="text-md lg:text-lg text-[var(--text-secondary)]">A detailed analysis of your restaurant spending.</p>
+            <header class="mb-8 flex items-center gap-4">
+                <button class="md:hidden text-white">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <div>
+                    <h1 class="text-3xl lg:text-4xl font-bold text-white font-poppins">Spending Insights</h1>
+                    <p class="text-md lg:text-lg text-[var(--text-secondary)]">A detailed analysis of your restaurant spending.</p>
+                </div>
             </header>
 
             <!-- Insights Section -->
@@ -78,6 +86,6 @@
         </main>
     </div>
 
-    <script src="spending.js"></script>
+    <script src="spending-page.js" type="module"></script>
 </body>
 </html>

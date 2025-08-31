@@ -17,7 +17,6 @@
 </head>
 
 <body class="bg-[var(--background-color)]">
-    <script src="spending.js"></script>
     <div id="loader-container">
         <div class="spinner"></div>
     </div>
@@ -31,10 +30,10 @@
                         <path d="M2 17l10 5 10-5"></path>
                         <path d="M2 12l10 5 10-5"></path>
                     </svg>
-                    <h1 class="text-xl font-bold text-white font-poppins">BillDash</h1>
+                    <div class="text-xl font-bold text-white font-poppins">BillDash</div>
                 </div>
                 <nav class="flex flex-col gap-2">
-                    <a class="flex items-center gap-3 px-4 py-2 rounded-md bg-[var(--primary-color)] text-white font-semibold" href="#">
+                    <a class="flex items-center gap-3 px-4 py-2 rounded-md bg-[var(--primary-color)] text-white font-semibold" href="#" aria-current="page">
                         <span class="material-symbols-outlined">dashboard</span>
                         <span>Dashboard</span>
                     </a>
@@ -64,10 +63,15 @@
             </div>
         </aside>
         <main class="flex-1 p-4 sm:p-8 overflow-y-auto">
-             <header class="mb-8 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div>
-                    <h1 class="text-3xl lg:text-4xl font-bold text-white font-poppins">Your Personal Dashboard</h1>
-                    <p class="text-md lg:text-lg text-[var(--text-secondary)]">Your progress, your achievements. Let's get started!</p>
+            <header class="mb-8 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <button class="md:hidden text-white">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <div>
+                        <h1 class="text-3xl lg:text-4xl font-bold text-white font-poppins">Your Personal Dashboard</h1>
+                        <p class="text-md lg:text-lg text-[var(--text-secondary)]">Your progress, your achievements. Let's get started!</p>
+                    </div>
                 </div>
                 <div class="flex items-center gap-4">
                     <div class="flex items-center gap-2 bg-[var(--card-color)] border border-[var(--border-color)] px-4 py-2 rounded-full text-[var(--accent-yellow)]">
@@ -113,7 +117,7 @@
                     <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
                         <h2 class="text-xl font-semibold text-white mb-4">Insights</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                            <div class="bg-[var(--background-color)] p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
                                 <div class="bg-[var(--accent-purple)] p-3 rounded-full">
                                     <span class="material-symbols-outlined text-white">calendar_month</span>
                                 </div>
@@ -122,7 +126,7 @@
                                     <p id="most-adventurous-month" class="font-bold text-lg text-white">...</p>
                                 </div>
                             </div>
-                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                            <div class="bg-[var(--background-color)] p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
                                 <div class="bg-[var(--primary-color)] p-3 rounded-full">
                                     <span class="material-symbols-outlined text-white">public</span>
                                 </div>
@@ -131,7 +135,7 @@
                                     <p id="new-cuisines-tried" class="font-bold text-lg text-white">...</p>
                                 </div>
                             </div>
-                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                            <div class="bg-[var(--background-color)] p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
                                 <div class="bg-[var(--accent-blue)] p-3 rounded-full">
                                     <span class="material-symbols-outlined text-white">attach_money</span>
                                 </div>
@@ -140,7 +144,7 @@
                                     <p id="average-tuesday-meal" class="font-bold text-lg text-white">...</p>
                                 </div>
                             </div>
-                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                            <div class="bg-[var(--background-color)] p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
                                 <div class="bg-[var(--accent-yellow)] p-3 rounded-full">
                                     <span class="material-symbols-outlined text-white">restaurant_menu</span>
                                 </div>
@@ -163,7 +167,7 @@
                         </div>
                         <div id="map-card-content">
                             <div id="map-container" class="relative">
-                                <div id="foodie-map" class="h-[218px] bg-gray-800 rounded-lg overflow-hidden"></div>
+                                <div id="foodie-map" class="h-[218px] bg-[var(--background-color)] rounded-lg overflow-hidden"></div>
                                 <div class="map-controls">
                                     <button id="fullscreen-btn" class="map-control-btn" title="Toggle Fullscreen">
                                         <span class="material-symbols-outlined">fullscreen</span>
@@ -176,7 +180,7 @@
                 <div class="lg:col-span-1 bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
                     <h2 class="text-xl font-semibold text-white mb-4">Achievements Unlocked</h2>
                     <div id="achievements-grid" class="grid grid-cols-2 gap-4">
-                         <div class="flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer border-2 border-dashed border-gray-600 hover:bg-gray-700 transition-colors">
+                         <div class="flex flex-col items-center justify-center p-4 bg-[var(--background-color)] rounded-lg text-center aspect-square group cursor-pointer border-2 border-dashed border-gray-600 hover:bg-gray-700 transition-colors">
                             <span class="text-4xl text-gray-500">❓</span>
                             <p class="text-sm font-semibold text-gray-400 mt-2">Mystery Badge</p>
                         </div>
@@ -185,279 +189,7 @@
             </div>
         </main>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            let mapboxToken = '';
-
-            async function initializeDashboard() {
-                showLoader();
-                try {
-                    // First, fetch the Mapbox token
-                    console.log('🔑 Fetching Mapbox token...');
-                    const tokenResponse = await fetch('/api/mapbox');
-                    if (!tokenResponse.ok) {
-                        throw new Error(`Failed to fetch Mapbox token: ${tokenResponse.status}`);
-                    }
-                    const tokenData = await tokenResponse.json();
-                    mapboxToken = tokenData.token;
-                    console.log('✅ Mapbox token received.');
-
-                    // Then, fetch the Airtable data
-                    console.log('🔍 Fetching data from /api/airtable...');
-                    const airtableResponse = await fetch('/api/airtable');
-                    console.log('📡 API Response status:', airtableResponse.status);
-                    
-                    if (!airtableResponse.ok) {
-                        throw new Error(`HTTP error! status: ${airtableResponse.status}`);
-                    }
-                    const data = await airtableResponse.json();
-                    console.log('📦 Raw API data:', data);
-
-                    if (data && data.records) {
-                        const bills = data.records.map(r => r.fields);
-                        console.log('💰 Processed bills data:', bills);
-                        console.log('📊 Number of bills:', bills.length);
-                        
-                        if (bills.length > 0) {
-                            console.log('🔍 First bill structure:', bills[0]);
-                            console.log('🔍 Available fields:', Object.keys(bills[0]));
-                        }
-                        
-                        updateDashboard(bills);
-                    } else {
-                        console.error("❌ No records found in API response.");
-                        console.log('🔍 Full data object:', data);
-                    }
-                } catch (error) {
-                    console.error('❌ Failed to initialize dashboard:', error);
-                } finally {
-                    hideLoader();
-                }
-            }
-
-            function updateDashboard(bills) {
-                updateStats(bills);
-                updateInsights(bills);
-                updateAchievements(bills);
-                updateMap(bills); // This will now use the fetched mapboxToken
-            }
-
-            function updateStats(bills) {
-                const totalSpent = bills.reduce((sum, bill) => sum + (bill.Kokku || 0), 0);
-                const billsTracked = bills.length;
-                const averageBill = billsTracked > 0 ? totalSpent / billsTracked : 0;
-
-                document.getElementById('total-spent').textContent = `€${totalSpent.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                document.getElementById('average-bill').textContent = `€${averageBill.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                document.getElementById('bills-tracked').textContent = billsTracked;
-            }
-
-            function updateInsights(bills) {
-                // This function now uses the more robust calculators from spending.js
-                const records = bills.map(b => ({ fields: b })); // Adapt to expected format
-
-                // 1. Most Adventurous Month
-                const seasonality = calculateSeasonality(records);
-                const topMonthData = seasonality.labels.reduce((top, month, i) => {
-                    const spend = seasonality.datasets[0].data[i];
-                    if (spend > top.spend) return { month, spend };
-                    return top;
-                }, { month: 'N/A', spend: 0 });
-                document.getElementById('most-adventurous-month').textContent = topMonthData.month;
-
-                // 2. Countries Visited (replaces Cuisines)
-                const countries = new Set(records.map(r => r.fields.Riik).filter(Boolean));
-                document.getElementById('new-cuisines-tried').textContent = `${countries.size} Countries`;
-
-                // 3. Weekend vs Weekday
-                const weekendEffect = calculateWeekendEffect(records);
-                document.getElementById('average-tuesday-meal').textContent = `Weekend: ${weekendEffect.avgWeekend}€`;
-                document.querySelector('#average-tuesday-meal').previousElementSibling.textContent = 'Avg. Weekend Bill';
-
-
-                // 4. Top City (replaces Most Ordered Dish)
-                const cityMix = calculateCityMix(records);
-                const topCity = cityMix.top5.length > 0 ? cityMix.top5[0][0] : 'N/A';
-                document.getElementById('most-ordered-dish').textContent = topCity;
-                document.querySelector('#most-ordered-dish').previousElementSibling.textContent = 'Top City';
-            }
-
-            function updateAchievements(bills) {
-                const records = bills.map(b => ({ fields: b })); // Adapt to expected format
-                const achievements = [
-                    { name: 'First Bite', unlocked: checkFirstBite(records), icon: 'restaurant' },
-                    { name: 'Globe Taster', unlocked: checkGlobeTaster(records), icon: 'public' },
-                    { name: 'Weekend Warrior', unlocked: checkWeekendWarrior(records), icon: 'sports_esports' },
-                    { name: 'Family Feast', unlocked: checkFamilyFeast(records), icon: 'groups' }
-                ];
-
-                const grid = document.getElementById('achievements-grid');
-                grid.innerHTML = ''; // Clear existing
-
-                const unlockedAchievements = achievements.filter(a => a.unlocked);
-
-                unlockedAchievements.slice(0, 3).forEach(ach => { // Show up to 3
-                    const div = document.createElement('div');
-                    div.className = 'flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer hover:bg-gray-700 transition-colors';
-                    div.innerHTML = `
-                        <span class="material-symbols-outlined text-4xl text-yellow-400 group-hover:animate-bounce">${ach.icon}</span>
-                        <p class="text-sm font-semibold text-white mt-2">${ach.name}</p>
-                    `;
-                    grid.appendChild(div);
-                });
-                
-                // Add a link to the full spending page
-                const linkToSpending = document.createElement('a');
-                linkToSpending.href = 'spending.html';
-                linkToSpending.className = 'flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer border-2 border-dashed border-gray-600 hover:bg-gray-700 transition-colors';
-                linkToSpending.innerHTML = `<span class="material-symbols-outlined text-4xl text-gray-500">arrow_forward</span><p class="text-sm font-semibold text-gray-400 mt-2">See All</p>`;
-                grid.appendChild(linkToSpending);
-            }
-
-            let map;
-            function updateMap(bills) {
-                console.log('🗺️ Updating map with bills:', bills.length);
-
-                if (!mapboxToken) {
-                    console.error('❌ Mapbox token not available. Cannot initialize map.');
-                    return;
-                }
-
-                if (!map) {
-                    mapboxgl.accessToken = mapboxToken;
-                    map = new mapboxgl.Map({
-                        container: 'foodie-map',
-                        style: 'mapbox://styles/mapbox/dark-v11', // Dark theme
-                        center: [24.7536, 59.4370], // Tallinn, Estonia [lng, lat]
-                        zoom: 12
-                    });
-
-                    const fullscreenBtn = document.getElementById('fullscreen-btn');
-                    const mapContainer = document.getElementById('map-container');
-                    const originalParent = document.getElementById('map-card-content');
-
-                    fullscreenBtn.addEventListener('click', () => {
-                        const isFullscreen = mapContainer.classList.toggle('fullscreen-map');
-                        document.body.classList.toggle('body-no-scroll', isFullscreen);
-
-                        if (isFullscreen) {
-                            // Move map to body for true fullscreen
-                            document.body.appendChild(mapContainer);
-                        } else {
-                            // Move map back to its original container
-                            originalParent.appendChild(mapContainer);
-                        }
-                        
-                        // Update icon
-                        const icon = fullscreenBtn.querySelector('.material-symbols-outlined');
-                        icon.textContent = isFullscreen ? 'fullscreen_exit' : 'fullscreen';
-
-                        // Important: resize map after container has changed size
-                        // A small delay ensures the DOM has updated before resizing
-                        setTimeout(() => {
-                            map.resize();
-                        }, 10); 
-                    });
-                }
-
-                // Use a Set to keep track of existing markers to avoid duplicates
-                if (map.markers) {
-                    map.markers.forEach(marker => marker.remove());
-                }
-                map.markers = [];
-
-                const validBills = bills.filter(bill => bill.coordinates);
-                console.log(`📍 Found ${validBills.length} bills with coordinates.`);
-
-                if (validBills.length === 0) {
-                    return; // No valid coordinates to plot
-                }
-
-                const bounds = new mapboxgl.LngLatBounds();
-
-                validBills.forEach(bill => {
-                    const [lat, lng] = bill.coordinates.split(',').map(Number);
-                    const restaurantName = bill.Nimetus || 'Unknown Restaurant';
-                    const amount = bill.Kokku || 0;
-                    const originalAmount = bill.KokkuOrig || 0;
-                    const currency = bill.Valuuta || '';
-                    const date = bill.Kuupäev ? new Date(bill.Kuupäev).toLocaleDateString('et-EE') : 'N/A';
-                    const foodItems = bill.ToidudDetails || [];
-
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        let markerColor = '#10b981'; // Green for €
-                        if (amount > 75) markerColor = '#ef4444'; // Red for €€€
-                        else if (amount > 35) markerColor = '#f59e0b'; // Yellow for €€
-
-                        const el = document.createElement('div');
-                        el.style.backgroundColor = markerColor;
-                        el.style.width = '20px';
-                        el.style.height = '20px';
-                        el.style.borderRadius = '50%';
-                        el.style.border = '2px solid white';
-                        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-                        
-                        let foodListHTML = '';
-                        if (foodItems.length > 0) {
-                            foodListHTML = '<ul style="margin: 8px 0 0 0; padding-left: 18px; font-size: 12px;">';
-                            foodItems.forEach(item => {
-                                const emoji = item.fields.Emoji || '🍽️';
-                                const foodName = item.fields.Toode || 'Unknown Item';
-                                foodListHTML += `<li style="margin-bottom: 4px;">${emoji} ${foodName}</li>`;
-                            });
-                            foodListHTML += '</ul>';
-                        }
-
-                        let popupHTML = `
-                            <div style="color: #333; font-family: Arial, sans-serif; max-width: 200px;">
-                                <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px;">${restaurantName}</h3>
-                                <div style="font-size: 12px; color: #6b7280;">
-                                    <div>📅 ${date}</div>
-                                    <div style="margin-top: 4px;"><strong>Total:</strong> €${amount.toFixed(2)}`;
-                        
-                        if (currency && currency !== 'EUR' && originalAmount > 0) {
-                            popupHTML += ` (${originalAmount.toFixed(2)} ${currency})`;
-                        }
-                        
-                        popupHTML += `</div></div>${foodListHTML}</div>`;
-
-                        const popup = new mapboxgl.Popup({ offset: 25 })
-                            .setHTML(popupHTML);
-
-                        const marker = new mapboxgl.Marker(el)
-                            .setLngLat([lng, lat])
-                            .setPopup(popup)
-                            .addTo(map);
-                        
-                        map.markers.push(marker);
-                        bounds.extend([lng, lat]);
-                    }
-                });
-
-                console.log(`🎯 Added ${map.markers.length} markers to map.`);
-
-                if (!bounds.isEmpty()) {
-                    map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
-                }
-            }
-
-
-            function showLoader() {
-                document.getElementById('loader-container').style.opacity = '1';
-                document.getElementById('loader-container').style.visibility = 'visible';
-            }
-
-            function hideLoader() {
-                document.getElementById('loader-container').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('loader-container').style.visibility = 'hidden';
-                }, 300);
-            }
-
-            initializeDashboard();
-        });
-    </script>
+    <script src="index-page.js" type="module"></script>
 </body>
 
 </html>
