@@ -3,19 +3,19 @@
 
 const fetch = require('node-fetch');
 
-const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID } = process.env;
+const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_RESTAURANT_VIEW_ID } = process.env;
 const TEGEVUSED_TABLE_NAME = 'Tegevused';
 const RESTORAN_TABLE_NAME = 'Restoran';
 
 // The exported function is the handler for the serverless function.
 module.exports = async (req, res) => {
   // Ensure Airtable credentials are configured
-  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-    return res.status(500).json({ error: 'Airtable credentials are not configured on the server.' });
+  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID || !AIRTABLE_RESTAURANT_VIEW_ID) {
+    return res.status(500).json({ error: 'Airtable credentials are not fully configured on the server.' });
   }
 
-  // 1. Fetch only "Restoran" activities from the "Tegevused" table
-  const tegevusedUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?filterByFormula={Tüüp}="Restoran"`;
+  // 1. Fetch only "Restoran" activities from the "Tegevused" table using the specified view
+  const tegevusedUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?view=${AIRTABLE_RESTAURANT_VIEW_ID}`;
 
   try {
     const tegevusedResponse = await fetch(tegevusedUrl, {

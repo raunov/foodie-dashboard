@@ -112,6 +112,7 @@
 </head>
 
 <body class="bg-[var(--background-color)]">
+    <script src="spending.js"></script>
     <div id="loader-container">
         <div class="spinner"></div>
     </div>
@@ -132,7 +133,7 @@
                         <span class="material-symbols-outlined">dashboard</span>
                         <span>Dashboard</span>
                     </a>
-                    <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="#">
+                    <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="spending.html">
                         <span class="material-symbols-outlined">payments</span>
                         <span>Spending</span>
                     </a>
@@ -348,147 +349,65 @@
             }
 
             function updateInsights(bills) {
-                console.log('🔍 Updating insights with bills:', bills.length);
-                
-                // 1. Most Adventurous Month (most spent)
-                const monthlySpending = bills.reduce((acc, bill) => {
-                    if (!bill.Kuupäev) return acc;
-                    const month = new Date(bill.Kuupäev).toLocaleString('default', { month: 'long' });
-                    acc[month] = (acc[month] || 0) + (bill.Kokku || 0);
-                    return acc;
-                }, {});
-                const topMonth = Object.keys(monthlySpending).length > 0 ? 
-                    Object.keys(monthlySpending).reduce((a, b) => monthlySpending[a] > monthlySpending[b] ? a : b) : 'N/A';
-                document.getElementById('most-adventurous-month').textContent = topMonth;
+                // This function now uses the more robust calculators from spending.js
+                const records = bills.map(b => ({ fields: b })); // Adapt to expected format
 
-                // 2. New Cuisines Tried - try multiple possible field names and handle arrays
-                let cuisines = [];
-                bills.forEach(bill => {
-                    // Try different field names for cuisines
-                    const cuisineField = bill.Cuisine || bill.cuisine || bill.Köök || bill.Restaurant || bill.Restoran || bill.Köögitüüp || bill.Tüüp;
-                    
-                    if (Array.isArray(cuisineField)) {
-                        // If it's an array, add all cuisines
-                        cuisines.push(...cuisineField.filter(c => typeof c === 'string'));
-                    } else if (typeof cuisineField === 'string') {
-                        cuisines.push(cuisineField);
-                    }
-                    
-                    // Also extract cuisine from restaurant names that might contain cuisine type
-                    const restaurantName = bill.Restoran || bill.Restaurant || bill.restoran || bill.restaurant;
-                    if (restaurantName && typeof restaurantName === 'string') {
-                        // Extract cuisine hints from restaurant names
-                        const lowerName = restaurantName.toLowerCase();
-                        if (lowerName.includes('pizza')) cuisines.push('Italian');
-                        if (lowerName.includes('sushi') || lowerName.includes('ramen')) cuisines.push('Japanese');
-                        if (lowerName.includes('burger')) cuisines.push('American');
-                        if (lowerName.includes('thai')) cuisines.push('Thai');
-                        if (lowerName.includes('indian')) cuisines.push('Indian');
-                        if (lowerName.includes('chinese')) cuisines.push('Chinese');
-                        if (lowerName.includes('mexican')) cuisines.push('Mexican');
-                        if (lowerName.includes('korean')) cuisines.push('Korean');
-                    }
-                });
-                const uniqueCuisines = [...new Set(cuisines.filter(Boolean))].length;
-                document.getElementById('new-cuisines-tried').textContent = uniqueCuisines > 0 ? `${uniqueCuisines} Cuisines` : 'N/A';
+                // 1. Most Adventurous Month
+                const seasonality = calculateSeasonality(records);
+                const topMonthData = seasonality.labels.reduce((top, month, i) => {
+                    const spend = seasonality.datasets[0].data[i];
+                    if (spend > top.spend) return { month, spend };
+                    return top;
+                }, { month: 'N/A', spend: 0 });
+                document.getElementById('most-adventurous-month').textContent = topMonthData.month;
 
-                // 3. Average Tuesday Meal
-                const tuesdayBills = bills.filter(bill => bill.Kuupäev && new Date(bill.Kuupäev).getDay() === 2);
-                const totalTuesdaySpent = tuesdayBills.reduce((sum, bill) => sum + (bill.Kokku || 0), 0);
-                const avgTuesday = tuesdayBills.length > 0 ? totalTuesdaySpent / tuesdayBills.length : 0;
-                document.getElementById('average-tuesday-meal').textContent = avgTuesday > 0 ? `€${avgTuesday.toFixed(2)}` : 'N/A';
-                
-                // 4. Most Ordered Dish - handle different data structures and filter out record IDs
-                let allDishes = [];
-                bills.forEach(bill => {
-                    // Try different possible field names for dishes
-                    const dishes = bill.Toidud || bill.toidud || bill.Dishes || bill.dishes || bill.Food || bill.food;
-                    if (Array.isArray(dishes)) {
-                        // If it's an array, add all dishes but filter out Airtable record IDs
-                        allDishes.push(...dishes.filter(dish => 
-                            typeof dish === 'string' && 
-                            !dish.startsWith('rec') && // Filter out Airtable record IDs
-                            dish.length < 50 // Reasonable dish name length
-                        ));
-                    } else if (typeof dishes === 'string' && !dishes.startsWith('rec') && dishes.length < 50) {
-                        // If it's a single string and not a record ID, add it
-                        allDishes.push(dishes);
-                    }
-                    
-                    // If no valid dishes found, use restaurant name as fallback
-                    const restaurant = bill.Restoran || bill.Restaurant || bill.restoran || bill.restaurant;
-                    if (allDishes.length === 0 && restaurant && typeof restaurant === 'string') {
-                        allDishes.push(restaurant);
-                    }
-                });
-                
-                // If still no dishes, create generic categories based on spending patterns
-                if (allDishes.length === 0) {
-                    bills.forEach(bill => {
-                        const amount = bill.Kokku || 0;
-                        if (amount > 0) {
-                            if (amount < 15) allDishes.push('Quick Bite');
-                            else if (amount < 30) allDishes.push('Casual Meal');
-                            else if (amount < 60) allDishes.push('Fine Dining');
-                            else allDishes.push('Premium Experience');
-                        }
-                    });
-                }
-                
-                if (allDishes.length > 0) {
-                    const dishCounts = allDishes.reduce((acc, dish) => {
-                        acc[dish] = (acc[dish] || 0) + 1;
-                        return acc;
-                    }, {});
-                    const topDish = Object.keys(dishCounts).reduce((a, b) => dishCounts[a] > dishCounts[b] ? a : b);
-                    document.getElementById('most-ordered-dish').textContent = topDish;
-                } else {
-                    document.getElementById('most-ordered-dish').textContent = 'N/A';
-                }
-                
-                console.log('📊 Insights updated - Cuisines:', uniqueCuisines, 'Dishes found:', allDishes.length);
+                // 2. Countries Visited (replaces Cuisines)
+                const countries = new Set(records.map(r => r.fields.Riik).filter(Boolean));
+                document.getElementById('new-cuisines-tried').textContent = `${countries.size} Countries`;
+
+                // 3. Weekend vs Weekday
+                const weekendEffect = calculateWeekendEffect(records);
+                document.getElementById('average-tuesday-meal').textContent = `Weekend: ${weekendEffect.avgWeekend}€`;
+                document.querySelector('#average-tuesday-meal').previousElementSibling.textContent = 'Avg. Weekend Bill';
+
+
+                // 4. Top City (replaces Most Ordered Dish)
+                const cityMix = calculateCityMix(records);
+                const topCity = cityMix.top5.length > 0 ? cityMix.top5[0][0] : 'N/A';
+                document.getElementById('most-ordered-dish').textContent = topCity;
+                document.querySelector('#most-ordered-dish').previousElementSibling.textContent = 'Top City';
             }
 
             function updateAchievements(bills) {
-                const achievements = [];
-                const totalSpent = bills.reduce((sum, bill) => sum + (bill.Kokku || 0), 0);
-                const uniqueCuisines = [...new Set(bills.map(b => b.Cuisine).filter(Boolean))];
-                const hasRamen = bills.some(b => b.Toidud && b.Toidud.includes('Ramen')); // Example, make more generic if needed
-
-                if (bills.length > 0) {
-                    achievements.push({ icon: '🏆', name: 'First Bill', detail: 'Welcome!', color: 'text-yellow-400' });
-                }
-                if (hasRamen) {
-                     achievements.push({ icon: '🍜', name: 'Noodle Novice', detail: 'First ramen', color: '' });
-                }
-                if (uniqueCuisines.length >= 5) {
-                    achievements.push({ icon: 'explore', name: 'Cuisine Pro', detail: 'Tried 5 Cuisines', color: 'text-purple-400', isMaterial: true });
-                }
-                if (totalSpent > 1000) {
-                    achievements.push({ icon: 'paid', name: 'Big Spender', detail: '$1000 total', color: 'text-red-400', isMaterial: true });
-                }
+                const records = bills.map(b => ({ fields: b })); // Adapt to expected format
+                const achievements = [
+                    { name: 'First Bite', unlocked: checkFirstBite(records), icon: 'restaurant' },
+                    { name: 'Globe Taster', unlocked: checkGlobeTaster(records), icon: 'public' },
+                    { name: 'Weekend Warrior', unlocked: checkWeekendWarrior(records), icon: 'sports_esports' },
+                    { name: 'Family Feast', unlocked: checkFamilyFeast(records), icon: 'groups' }
+                ];
 
                 const grid = document.getElementById('achievements-grid');
                 grid.innerHTML = ''; // Clear existing
-                achievements.forEach(ach => {
-                    const iconHtml = ach.isMaterial 
-                        ? `<span class="material-symbols-outlined text-4xl ${ach.color} group-hover:animate-bounce">${ach.icon}</span>`
-                        : `<span class="text-4xl ${ach.color} group-hover:animate-bounce">${ach.icon}</span>`;
 
+                const unlockedAchievements = achievements.filter(a => a.unlocked);
+
+                unlockedAchievements.slice(0, 3).forEach(ach => { // Show up to 3
                     const div = document.createElement('div');
                     div.className = 'flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer hover:bg-gray-700 transition-colors';
                     div.innerHTML = `
-                        ${iconHtml}
+                        <span class="material-symbols-outlined text-4xl text-yellow-400 group-hover:animate-bounce">${ach.icon}</span>
                         <p class="text-sm font-semibold text-white mt-2">${ach.name}</p>
-                        <p class="text-xs text-gray-400">${ach.detail}</p>
                     `;
                     grid.appendChild(div);
                 });
                 
-                const mysteryBadge = document.createElement('div');
-                mysteryBadge.className = 'flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer border-2 border-dashed border-gray-600 hover:bg-gray-700 transition-colors';
-                mysteryBadge.innerHTML = `<span class="text-4xl text-gray-500">❓</span><p class="text-sm font-semibold text-gray-400 mt-2">Mystery Badge</p>`;
-                grid.appendChild(mysteryBadge);
+                // Add a link to the full spending page
+                const linkToSpending = document.createElement('a');
+                linkToSpending.href = 'spending.html';
+                linkToSpending.className = 'flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer border-2 border-dashed border-gray-600 hover:bg-gray-700 transition-colors';
+                linkToSpending.innerHTML = `<span class="material-symbols-outlined text-4xl text-gray-500">arrow_forward</span><p class="text-sm font-semibold text-gray-400 mt-2">See All</p>`;
+                grid.appendChild(linkToSpending);
             }
 
             let map;
