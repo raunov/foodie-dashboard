@@ -191,6 +191,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isNaN(lat) || isNaN(lng)) return;
 
             const restaurantName = bill.Nimetus || 'Unknown Restaurant';
+            const dishName = bill.Toit || 'Dish';
+            const emoji = bill.Emoji || '🍽️';
             const amount = bill.Kokku || 0;
             const date = bill.Kuupäev ? new Date(bill.Kuupäev).toLocaleDateString('et-EE') : 'N/A';
 
@@ -207,14 +209,16 @@ document.addEventListener('DOMContentLoaded', function() {
             el.style.border = '2px solid white';
 
             const popupElement = document.createElement('div');
-            const title = document.createElement('h3');
-            title.textContent = restaurantName;
-            const content = document.createElement('p');
-            content.textContent = `€${amount.toFixed(2)} on ${date}`;
-            popupElement.appendChild(title);
-            popupElement.appendChild(content);
+            popupElement.innerHTML = `
+                <h3>${emoji} ${dishName}</h3>
+                <p><strong>${restaurantName}</strong></p>
+                <p>€${amount.toFixed(2)} on ${date}</p>
+            `;
 
-            const popup = new mapboxgl.Popup({ offset: 25 })
+            const popup = new mapboxgl.Popup({ 
+                    offset: 25,
+                    className: 'foodie-popup'
+                })
                 .setDOMContent(popupElement);
 
             const marker = new mapboxgl.Marker(el)

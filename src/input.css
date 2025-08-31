@@ -68,10 +68,8 @@ body.body-no-scroll {
     position: fixed !important;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     z-index: 5000;
 }
 
@@ -138,6 +136,32 @@ body.body-no-scroll {
     visibility: visible;
     opacity: 1;
     position: relative;
+}
+
+.foodie-popup .mapboxgl-popup-content {
+    background-color: var(--card-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+}
+
+.foodie-popup .mapboxgl-popup-close-button {
+    color: var(--text-secondary);
+    font-size: 20px;
+}
+
+.foodie-popup h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.foodie-popup p {
+    margin: 0;
+    font-size: 0.875rem;
 }
 
 @media (max-width: 768px) {
