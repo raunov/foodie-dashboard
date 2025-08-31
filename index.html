@@ -10,8 +10,8 @@
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Poppins:wght@700&amp;display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <style type="text/tailwindcss">
         :root {
@@ -236,18 +236,30 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            
+            let mapboxToken = '';
+
             async function initializeDashboard() {
                 showLoader();
                 try {
-                    console.log('🔍 Fetching data from /api/airtable...');
-                    const response = await fetch('/api/airtable');
-                    console.log('📡 API Response status:', response.status);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                    // First, fetch the Mapbox token
+                    console.log('🔑 Fetching Mapbox token...');
+                    const tokenResponse = await fetch('/api/mapbox');
+                    if (!tokenResponse.ok) {
+                        throw new Error(`Failed to fetch Mapbox token: ${tokenResponse.status}`);
                     }
-                    const data = await response.json();
+                    const tokenData = await tokenResponse.json();
+                    mapboxToken = tokenData.token;
+                    console.log('✅ Mapbox token received.');
+
+                    // Then, fetch the Airtable data
+                    console.log('🔍 Fetching data from /api/airtable...');
+                    const airtableResponse = await fetch('/api/airtable');
+                    console.log('📡 API Response status:', airtableResponse.status);
+                    
+                    if (!airtableResponse.ok) {
+                        throw new Error(`HTTP error! status: ${airtableResponse.status}`);
+                    }
+                    const data = await airtableResponse.json();
                     console.log('📦 Raw API data:', data);
 
                     if (data && data.records) {
@@ -255,7 +267,6 @@
                         console.log('💰 Processed bills data:', bills);
                         console.log('📊 Number of bills:', bills.length);
                         
-                        // Log first few records to understand structure
                         if (bills.length > 0) {
                             console.log('🔍 First bill structure:', bills[0]);
                             console.log('🔍 Available fields:', Object.keys(bills[0]));
@@ -277,7 +288,7 @@
                 updateStats(bills);
                 updateInsights(bills);
                 updateAchievements(bills);
-                updateMap(bills);
+                updateMap(bills); // This will now use the fetched mapboxToken
             }
 
             function updateStats(bills) {
@@ -437,95 +448,79 @@
             let map;
             function updateMap(bills) {
                 console.log('🗺️ Updating map with bills:', bills.length);
-                
-                // Initialize map if not already done
-                if (!map) {
-                    // Center on Tallinn, Estonia (based on Estonian field names)
-                    map = L.map('foodie-map').setView([59.4370, 24.7536], 12);
-                    
-                    // Add dark theme tile layer
-                    L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=free', {
-                        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-                        maxZoom: 20,
-                    }).addTo(map);
+
+                if (!mapboxToken) {
+                    console.error('❌ Mapbox token not available. Cannot initialize map.');
+                    return;
                 }
-                
-                // Clear existing markers
-                map.eachLayer(layer => {
-                    if (layer instanceof L.Marker) {
-                        map.removeLayer(layer);
-                    }
-                });
 
-                // Get unique restaurants from bills
-                const restaurants = new Map();
-                bills.forEach(bill => {
-                    const restaurantName = bill.Restoran || bill.Restaurant || bill.restoran || bill.restaurant || 'Unknown Restaurant';
-                    const amount = bill.Kokku || 0;
-                    
-                    if (restaurants.has(restaurantName)) {
-                        const existing = restaurants.get(restaurantName);
-                        existing.totalSpent += amount;
-                        existing.visits += 1;
-                    } else {
-                        restaurants.set(restaurantName, {
-                            name: restaurantName,
-                            totalSpent: amount,
-                            visits: 1,
-                            // Sample coordinates around Tallinn - in real app you'd geocode addresses
-                            lat: 59.4370 + (Math.random() - 0.5) * 0.1,
-                            lng: 24.7536 + (Math.random() - 0.5) * 0.1
-                        });
-                    }
-                });
-
-                // Add markers for each restaurant
-                restaurants.forEach(restaurant => {
-                    const avgSpent = restaurant.totalSpent / restaurant.visits;
-                    
-                    // Determine price category and marker color
-                    let markerColor = '#10b981'; // Green for $
-                    let priceCategory = '$';
-                    
-                    if (avgSpent > 75) {
-                        markerColor = '#ef4444'; // Red for $$$
-                        priceCategory = '$$$';
-                    } else if (avgSpent > 35) {
-                        markerColor = '#f59e0b'; // Yellow for $$
-                        priceCategory = '$$';
-                    }
-                    
-                    // Create custom marker
-                    const markerIcon = L.divIcon({
-                        className: 'custom-marker',
-                        html: `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                        iconSize: [20, 20],
-                        iconAnchor: [10, 10]
+                if (!map) {
+                    mapboxgl.accessToken = mapboxToken;
+                    map = new mapboxgl.Map({
+                        container: 'foodie-map',
+                        style: 'mapbox://styles/mapbox/dark-v11', // Dark theme
+                        center: [24.7536, 59.4370], // Tallinn, Estonia [lng, lat]
+                        zoom: 12
                     });
-                    
-                    const marker = L.marker([restaurant.lat, restaurant.lng], { icon: markerIcon }).addTo(map);
-                    
-                    // Add popup with restaurant info
-                    marker.bindPopup(`
-                        <div style="color: #333; font-family: Arial, sans-serif;">
-                            <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px;">${restaurant.name}</h3>
-                            <div style="font-size: 12px; color: #6b7280;">
-                                <div><strong>Visits:</strong> ${restaurant.visits}</div>
-                                <div><strong>Total Spent:</strong> $${restaurant.totalSpent.toFixed(2)}</div>
-                                <div><strong>Avg per Visit:</strong> $${avgSpent.toFixed(2)} (${priceCategory})</div>
-                            </div>
-                        </div>
-                    `);
-                });
-                
-                console.log('🎯 Added', restaurants.size, 'restaurant markers to map');
-                
-                // Fit map to show all markers if there are any
-                if (restaurants.size > 0) {
-                    const group = new L.featureGroup(Array.from(map.eachLayer(layer => layer instanceof L.Marker ? layer : null)).filter(Boolean));
-                    if (group.getBounds().isValid()) {
-                        map.fitBounds(group.getBounds().pad(0.1));
+                }
+
+                // Use a Set to keep track of existing markers to avoid duplicates
+                if (map.markers) {
+                    map.markers.forEach(marker => marker.remove());
+                }
+                map.markers = [];
+
+                const validBills = bills.filter(bill => bill.coordinates);
+                console.log(`📍 Found ${validBills.length} bills with coordinates.`);
+
+                if (validBills.length === 0) {
+                    return; // No valid coordinates to plot
+                }
+
+                const bounds = new mapboxgl.LngLatBounds();
+
+                validBills.forEach(bill => {
+                    const [lat, lng] = bill.coordinates.split(',').map(Number);
+                    const restaurantName = bill.Nimetus || 'Unknown Restaurant';
+                    const amount = bill.Kokku || 0;
+
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        let markerColor = '#10b981'; // Green for $
+                        if (amount > 75) markerColor = '#ef4444'; // Red for $$$
+                        else if (amount > 35) markerColor = '#f59e0b'; // Yellow for $$
+
+                        const el = document.createElement('div');
+                        el.style.backgroundColor = markerColor;
+                        el.style.width = '20px';
+                        el.style.height = '20px';
+                        el.style.borderRadius = '50%';
+                        el.style.border = '2px solid white';
+                        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+                        const popup = new mapboxgl.Popup({ offset: 25 })
+                            .setHTML(`
+                                <div style="color: #333; font-family: Arial, sans-serif;">
+                                    <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px;">${restaurantName}</h3>
+                                    <div style="font-size: 12px; color: #6b7280;">
+                                        <strong>Total Spent:</strong> $${amount.toFixed(2)}
+                                    </div>
+                                </div>
+                            `);
+
+                        const marker = new mapboxgl.Marker(el)
+                            .setLngLat([lng, lat])
+                            .setPopup(popup)
+                            .addTo(map);
+                        
+                        map.markers.push(marker);
+                        bounds.extend([lng, lat]);
                     }
+                });
+
+                console.log(`🎯 Added ${map.markers.length} markers to map.`);
+
+                if (!bounds.isEmpty()) {
+                    map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
                 }
             }
 
