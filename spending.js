@@ -30,31 +30,41 @@ function processAndRenderInsights(records) {
     const travelRecords = records.filter(r => r.fields['Spend Type'] === 'Travel');
 
     const insights = [
-        { title: 'Total Spent', value: `Local: ${calculateTotalSpent(records).local.ytd}€ (YTD) | Travel: ${calculateTotalSpent(records).travel.ytd}€ (YTD)`, icon: 'paid', color: 'var(--primary-color)' },
-        { title: 'Average & Median Bill', value: `Local: ${calculateAverageAndMedianBill(localRecords, travelRecords).local.avg}€ (Avg)<br>Travel: ${calculateAverageAndMedianBill(localRecords, travelRecords).travel.avg}€ (Avg)`, icon: 'monitoring', color: 'var(--accent-purple)' },
-        { title: 'Weekday Profile', chartId: 'weekdayProfileChart', type: 'bar', data: calculateWeekdayProfile(records), icon: 'calendar_month', color: 'var(--accent-blue)' },
-        { title: 'Time-of-day Mix', chartId: 'timeOfDayChart', type: 'pie', data: calculateTimeOfDayMix(records), icon: 'schedule', color: 'var(--accent-yellow)' },
-        { title: 'Seasonality & Trend', chartId: 'seasonalityChart', type: 'line', data: calculateSeasonality(records), icon: 'trending_up', color: 'var(--primary-color)', colSpan: 'lg:col-span-2' },
-        { title: 'Spend Volatility', value: `Std Dev: ${calculateSpendVolatility(records).stdDev}€<br>Outlier Days: ${calculateSpendVolatility(records).outlierDays}`, icon: 'warning', color: 'var(--accent-red)' },
-        { title: 'Spend Share (€)', chartId: 'spendShareValueChart', type: 'pie', data: { labels: calculateLocalVsTravelShare(localRecords, travelRecords).labels, data: calculateLocalVsTravelShare(localRecords, travelRecords).valueData }, icon: 'public', color: 'var(--accent-purple)' },
-        { title: 'Travel Premium', value: `${calculateLocalVsTravelShare(localRecords, travelRecords).travelPremium}x`, icon: 'flight_takeoff', color: 'var(--accent-blue)' },
-        { title: 'Avg. Cost per Person', value: Object.entries(calculateFamilyInvolvement(records)).map(([size, avg]) => `${size}p: ${avg}€`).join('<br>') || 'N/A', icon: 'groups', color: 'var(--accent-yellow)' },
-        { title: 'Dining Streaks', value: `Streak: ${calculateStreaks(records).longestStreak} days<br>Gap: ${calculateStreaks(records).longestGap} days`, icon: 'local_fire_department', color: 'var(--accent-red)' },
-        { title: 'Weekend Effect', value: `Δ ${calculateWeekendEffect(records).deltaPercent}%`, icon: 'deck', color: 'var(--primary-color)' },
-        { title: 'Photo Coverage', value: `${calculateAttachmentCoverage(records).coveragePercent}%`, icon: 'attachment', color: 'var(--accent-purple)' },
-        { title: 'Top City', value: (calculateCityMix(records).top5[0] || ['N/A'])[0], icon: 'location_city', color: 'var(--accent-blue)' },
+        { title: 'Total Spent', value: `Local: ${calculateTotalSpent(records).local.ytd}€ (YTD) | Travel: ${calculateTotalSpent(records).travel.ytd}€ (YTD)`, icon: 'paid', color: 'var(--primary-color)', colSpan: 'lg:col-span-2', description: 'Total amount spent year-to-date (YTD) for local and travel categories.' },
+        { title: 'Average Bill', value: `Local: ${calculateAverageAndMedianBill(localRecords, travelRecords).local.avg}€<br>Travel: ${calculateAverageAndMedianBill(localRecords, travelRecords).travel.avg}€`, icon: 'monitoring', color: 'var(--accent-purple)', description: 'The average cost of a single restaurant bill, separated by local and travel.' },
+        { title: 'Weekday Profile', chartId: 'weekdayProfileChart', type: 'bar', data: calculateWeekdayProfile(records), icon: 'calendar_month', color: 'var(--accent-blue)', description: 'Average spending for each day of the week.' },
+        { title: 'Time-of-day Mix', chartId: 'timeOfDayChart', type: 'pie', data: calculateTimeOfDayMix(records), icon: 'schedule', color: 'var(--accent-yellow)', description: 'A breakdown of spending by time of day: Lunch (10-15), Dinner (18-22), and Late Night (22-03).' },
+        { title: 'Seasonality & Trend', chartId: 'seasonalityChart', type: 'line', data: calculateSeasonality(records), icon: 'trending_up', color: 'var(--primary-color)', colSpan: 'lg:col-span-2', description: 'Monthly total spend and a 3-month moving average to show trends over time.' },
+        { title: 'Spend Volatility', value: `Std Dev: ${calculateSpendVolatility(records).stdDev}€<br>Outlier Days: ${calculateSpendVolatility(records).outlierDays}`, icon: 'warning', color: 'var(--accent-red)', description: 'The standard deviation of your daily spend. Outlier days are days where spending was 2 standard deviations above the average.' },
+        { title: 'Spend Share (€)', chartId: 'spendShareValueChart', type: 'pie', data: { labels: calculateLocalVsTravelShare(localRecords, travelRecords).labels, data: calculateLocalVsTravelShare(localRecords, travelRecords).valueData }, icon: 'public', color: 'var(--accent-purple)', description: 'The share of total spending between local and travel categories.' },
+        { title: 'Travel Premium', value: `${calculateLocalVsTravelShare(localRecords, travelRecords).travelPremium}x`, icon: 'flight_takeoff', color: 'var(--accent-blue)', description: 'The ratio of your average travel bill to your average local bill. A value of 1.5x means you spend 50% more on average when traveling.' },
+        { title: 'Avg. Cost per Person', value: Object.entries(calculateFamilyInvolvement(records)).map(([size, avg]) => `${size}p: ${avg}€`).join('<br>') || 'N/A', icon: 'groups', color: 'var(--accent-yellow)', description: 'The average cost per person when dining with family members.' },
+        { title: 'Dining Streaks', value: `Streak: ${calculateStreaks(records).longestStreak} days<br>Gap: ${calculateStreaks(records).longestGap} days`, icon: 'local_fire_department', color: 'var(--accent-red)', description: 'The longest streak of consecutive days with a restaurant bill, and the longest gap without one.' },
+        { title: 'Weekend Effect', value: `Δ ${calculateWeekendEffect(records).deltaPercent}%`, icon: 'deck', color: 'var(--primary-color)', description: 'The percentage difference in average spending between weekends (Sat-Sun) and weekdays (Mon-Fri).' },
+        { title: 'Photo Coverage', value: `${calculateAttachmentCoverage(records).coveragePercent}%`, icon: 'attachment', color: 'var(--accent-purple)', description: 'The percentage of your bills that have a photo attached.' },
+        { title: 'Top City', value: (calculateCityMix(records).top5[0] || ['N/A'])[0], icon: 'location_city', color: 'var(--accent-blue)', description: 'The city where you have spent the most money.' },
     ];
+
+    const chartInsights = [];
 
     insights.forEach(insight => {
         if (insight.type) { // It's a chart
             insightsGrid.innerHTML += createInsightCard(insight.title, `<canvas id="${insight.chartId}"></canvas>`, true, insight.icon, insight.color, insight.colSpan);
-            if (insight.type === 'bar') renderBarChart(insight.chartId, insight.title, insight.data.labels, insight.data.data);
-            if (insight.type === 'pie') renderPieChart(insight.chartId, insight.title, insight.data.labels, insight.data.data);
-            if (insight.type === 'line') renderLineChart(insight.chartId, insight.title, insight.data.labels, insight.data.datasets);
+            chartInsights.push(insight);
         } else { // It's text
             insightsGrid.innerHTML += createInsightCard(insight.title, insight.value, false, insight.icon, insight.color, insight.colSpan);
         }
     });
+
+    // Render charts and animations after a short delay to ensure DOM is updated
+    setTimeout(() => {
+        chartInsights.forEach(insight => {
+            if (insight.type === 'bar') renderBarChart(insight.chartId, insight.title, insight.data.labels, insight.data.data);
+            if (insight.type === 'pie') renderPieChart(insight.chartId, insight.title, insight.data.labels, insight.data.data);
+            if (insight.type === 'line') renderLineChart(insight.chartId, insight.title, insight.data.labels, insight.data.datasets);
+        });
+        animateCountUp();
+    }, 0);
 }
 
 function processAndRenderAchievements(records) {
@@ -261,20 +271,24 @@ function calculateFamilyInvolvement(records) {
 function calculateStreaks(records) {
     if (records.length === 0) return { longestStreak: 0, longestGap: 0 };
 
-    const dates = [...new Set(records.map(r => r.fields.Kuupäev))].sort();
+    const dates = [...new Set(records.map(r => r.fields.Kuupäev).filter(Boolean))].sort();
+    if (dates.length < 2) return { longestStreak: dates.length, longestGap: 0 };
+
     const timestamps = dates.map(d => new Date(d).getTime());
     
     let longestStreak = 1, currentStreak = 1;
     let longestGap = 0;
 
     for (let i = 1; i < timestamps.length; i++) {
-        const diffDays = (timestamps[i] - timestamps[i-1]) / (1000 * 3600 * 24);
+        const diffDays = Math.round((timestamps[i] - timestamps[i-1]) / (1000 * 3600 * 24));
         if (diffDays === 1) {
             currentStreak++;
         } else {
             longestStreak = Math.max(longestStreak, currentStreak);
             currentStreak = 1;
-            longestGap = Math.max(longestGap, diffDays - 1);
+            if (diffDays > 1) {
+                longestGap = Math.max(longestGap, diffDays - 1);
+            }
         }
     }
     longestStreak = Math.max(longestStreak, currentStreak);
@@ -574,16 +588,29 @@ function renderLineChart(canvasId, title, labels, datasets) {
 
 // --- Helper functions for creating UI elements ---
 
-function createInsightCard(title, value, isChart = false, icon = 'info', color = 'var(--primary-color)', colSpan = '') {
+function createInsightCard(title, value, isChart = false, icon = 'info', color = 'var(--primary-color)', colSpan = '', description = '') {
+    const isNumeric = !isChart && !isNaN(parseFloat(value));
+    const valueHtml = isChart 
+        ? value 
+        : `<div class="text-3xl font-bold text-white mt-4 font-poppins" ${isNumeric ? `data-countup="${parseFloat(value)}"` : ''}>${isNumeric ? '0' : value}</div>`;
+
+    const tooltipHtml = description 
+        ? `<div class="tooltip-container">
+               <span class="material-symbols-outlined tooltip-icon">info</span>
+               <span class="tooltip-text">${description}</span>
+           </div>` 
+        : '';
+
     const card = `
-        <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] hover:border-[${color}] transition-all duration-300 transform hover:-translate-y-1 ${colSpan}">
+        <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] hover:border-[${color}] transition-all duration-300 transform hover:-translate-y-1 ${colSpan} relative">
+            ${tooltipHtml}
             <div class="flex items-center gap-4 mb-2">
                 <div class="p-2 rounded-full" style="background-color: ${color}33;">
                     <span class="material-symbols-outlined" style="color: ${color};">${icon}</span>
                 </div>
                 <h3 class="text-lg font-semibold text-white">${title}</h3>
             </div>
-            ${isChart ? value : `<div class="text-3xl font-bold text-white mt-4 font-poppins">${value}</div>`}
+            ${valueHtml}
         </div>
     `;
     return card;
@@ -598,4 +625,26 @@ function createAchievementBadge(name, description, unlocked = false, icon = 'mil
         </div>
     `;
     return badge;
+}
+
+// --- Animation Helper ---
+function animateCountUp() {
+    const counters = document.querySelectorAll('[data-countup]');
+    const speed = 100; // Adjust for faster/slower animation
+
+    counters.forEach(counter => {
+        const target = +counter.getAttribute('data-countup');
+        const updateCount = () => {
+            const count = +counter.innerText;
+            const inc = target / speed;
+
+            if (count < target) {
+                counter.innerText = Math.ceil(count + inc);
+                setTimeout(updateCount, 10);
+            } else {
+                counter.innerText = target.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        };
+        updateCount();
+    });
 }
