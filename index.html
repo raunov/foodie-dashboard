@@ -10,6 +10,8 @@
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Poppins:wght@700&amp;display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <style type="text/tailwindcss">
         :root {
@@ -216,9 +218,7 @@
                                 <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-red)]"></span>$$$</div>
                             </div>
                         </div>
-                        <div class="h-[218px] bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden">
-                            <img alt="Map of restaurant locations" class="w-full h-full object-cover rounded-lg transform hover:scale-110 transition-transform duration-500" src="https://placehold.co/800x400/1f2937/9ca3af?text=Your+Foodie+Map" />
-                        </div>
+                        <div id="foodie-map" class="h-[218px] bg-gray-800 rounded-lg overflow-hidden"></div>
                     </div>
                 </div>
                 <div class="lg:col-span-1 bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
@@ -240,20 +240,34 @@
             async function initializeDashboard() {
                 showLoader();
                 try {
+                    console.log('🔍 Fetching data from /api/airtable...');
                     const response = await fetch('/api/airtable');
+                    console.log('📡 API Response status:', response.status);
+                    
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     const data = await response.json();
+                    console.log('📦 Raw API data:', data);
 
                     if (data && data.records) {
                         const bills = data.records.map(r => r.fields);
+                        console.log('💰 Processed bills data:', bills);
+                        console.log('📊 Number of bills:', bills.length);
+                        
+                        // Log first few records to understand structure
+                        if (bills.length > 0) {
+                            console.log('🔍 First bill structure:', bills[0]);
+                            console.log('🔍 Available fields:', Object.keys(bills[0]));
+                        }
+                        
                         updateDashboard(bills);
                     } else {
-                        console.error("No records found.");
+                        console.error("❌ No records found in API response.");
+                        console.log('🔍 Full data object:', data);
                     }
                 } catch (error) {
-                    console.error('Failed to initialize dashboard:', error);
+                    console.error('❌ Failed to initialize dashboard:', error);
                 } finally {
                     hideLoader();
                 }
@@ -263,6 +277,7 @@
                 updateStats(bills);
                 updateInsights(bills);
                 updateAchievements(bills);
+                updateMap(bills);
             }
 
             function updateStats(bills) {
@@ -276,6 +291,8 @@
             }
 
             function updateInsights(bills) {
+                console.log('🔍 Updating insights with bills:', bills.length);
+                
                 // 1. Most Adventurous Month (most spent)
                 const monthlySpending = bills.reduce((acc, bill) => {
                     if (!bill.Kuupäev) return acc;
@@ -283,12 +300,20 @@
                     acc[month] = (acc[month] || 0) + (bill.Kokku || 0);
                     return acc;
                 }, {});
-                const topMonth = Object.keys(monthlySpending).reduce((a, b) => monthlySpending[a] > monthlySpending[b] ? a : b, 'N/A');
+                const topMonth = Object.keys(monthlySpending).length > 0 ? 
+                    Object.keys(monthlySpending).reduce((a, b) => monthlySpending[a] > monthlySpending[b] ? a : b) : 'N/A';
                 document.getElementById('most-adventurous-month').textContent = topMonth;
 
-                // 2. New Cuisines Tried
-                const uniqueCuisines = [...new Set(bills.map(bill => bill.Cuisine).filter(Boolean))].length;
-                document.getElementById('new-cuisines-tried').textContent = `${uniqueCuisines} Cuisines`;
+                // 2. New Cuisines Tried - try multiple possible field names
+                let cuisines = [];
+                bills.forEach(bill => {
+                    const cuisine = bill.Cuisine || bill.cuisine || bill.Köök || bill.Restaurant || bill.Restoran;
+                    if (cuisine && typeof cuisine === 'string') {
+                        cuisines.push(cuisine);
+                    }
+                });
+                const uniqueCuisines = [...new Set(cuisines)].length;
+                document.getElementById('new-cuisines-tried').textContent = uniqueCuisines > 0 ? `${uniqueCuisines} Cuisines` : 'N/A';
 
                 // 3. Average Tuesday Meal
                 const tuesdayBills = bills.filter(bill => bill.Kuupäev && new Date(bill.Kuupäev).getDay() === 2);
@@ -296,13 +321,38 @@
                 const avgTuesday = tuesdayBills.length > 0 ? totalTuesdaySpent / tuesdayBills.length : 0;
                 document.getElementById('average-tuesday-meal').textContent = avgTuesday > 0 ? `$${avgTuesday.toFixed(2)}` : 'N/A';
                 
-                // 4. Most Ordered Dish
-                const dishCounts = (bills.flatMap(bill => bill.Toidud || [])).reduce((acc, dish) => {
-                    acc[dish] = (acc[dish] || 0) + 1;
-                    return acc;
-                }, {});
-                const topDish = Object.keys(dishCounts).reduce((a, b) => dishCounts[a] > dishCounts[b] ? a : b, 'N/A');
-                document.getElementById('most-ordered-dish').textContent = topDish;
+                // 4. Most Ordered Dish - handle different data structures
+                let allDishes = [];
+                bills.forEach(bill => {
+                    // Try different possible field names for dishes
+                    const dishes = bill.Toidud || bill.toidud || bill.Dishes || bill.dishes || bill.Food || bill.food;
+                    if (Array.isArray(dishes)) {
+                        // If it's an array, add all dishes
+                        allDishes.push(...dishes.filter(dish => typeof dish === 'string'));
+                    } else if (typeof dishes === 'string') {
+                        // If it's a single string, add it
+                        allDishes.push(dishes);
+                    }
+                    
+                    // Also try restaurant name as a fallback
+                    const restaurant = bill.Restoran || bill.Restaurant || bill.restoran || bill.restaurant;
+                    if (!dishes && restaurant && typeof restaurant === 'string') {
+                        allDishes.push(restaurant);
+                    }
+                });
+                
+                if (allDishes.length > 0) {
+                    const dishCounts = allDishes.reduce((acc, dish) => {
+                        acc[dish] = (acc[dish] || 0) + 1;
+                        return acc;
+                    }, {});
+                    const topDish = Object.keys(dishCounts).reduce((a, b) => dishCounts[a] > dishCounts[b] ? a : b);
+                    document.getElementById('most-ordered-dish').textContent = topDish;
+                } else {
+                    document.getElementById('most-ordered-dish').textContent = 'N/A';
+                }
+                
+                console.log('📊 Insights updated - Cuisines:', uniqueCuisines, 'Dishes found:', allDishes.length);
             }
 
             function updateAchievements(bills) {
@@ -347,6 +397,101 @@
                 grid.appendChild(mysteryBadge);
             }
 
+            let map;
+            function updateMap(bills) {
+                console.log('🗺️ Updating map with bills:', bills.length);
+                
+                // Initialize map if not already done
+                if (!map) {
+                    // Center on Tallinn, Estonia (based on Estonian field names)
+                    map = L.map('foodie-map').setView([59.4370, 24.7536], 12);
+                    
+                    // Add dark theme tile layer
+                    L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=free', {
+                        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+                        maxZoom: 20,
+                    }).addTo(map);
+                }
+                
+                // Clear existing markers
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                // Get unique restaurants from bills
+                const restaurants = new Map();
+                bills.forEach(bill => {
+                    const restaurantName = bill.Restoran || bill.Restaurant || bill.restoran || bill.restaurant || 'Unknown Restaurant';
+                    const amount = bill.Kokku || 0;
+                    
+                    if (restaurants.has(restaurantName)) {
+                        const existing = restaurants.get(restaurantName);
+                        existing.totalSpent += amount;
+                        existing.visits += 1;
+                    } else {
+                        restaurants.set(restaurantName, {
+                            name: restaurantName,
+                            totalSpent: amount,
+                            visits: 1,
+                            // Sample coordinates around Tallinn - in real app you'd geocode addresses
+                            lat: 59.4370 + (Math.random() - 0.5) * 0.1,
+                            lng: 24.7536 + (Math.random() - 0.5) * 0.1
+                        });
+                    }
+                });
+
+                // Add markers for each restaurant
+                restaurants.forEach(restaurant => {
+                    const avgSpent = restaurant.totalSpent / restaurant.visits;
+                    
+                    // Determine price category and marker color
+                    let markerColor = '#10b981'; // Green for $
+                    let priceCategory = '$';
+                    
+                    if (avgSpent > 75) {
+                        markerColor = '#ef4444'; // Red for $$$
+                        priceCategory = '$$$';
+                    } else if (avgSpent > 35) {
+                        markerColor = '#f59e0b'; // Yellow for $$
+                        priceCategory = '$$';
+                    }
+                    
+                    // Create custom marker
+                    const markerIcon = L.divIcon({
+                        className: 'custom-marker',
+                        html: `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    });
+                    
+                    const marker = L.marker([restaurant.lat, restaurant.lng], { icon: markerIcon }).addTo(map);
+                    
+                    // Add popup with restaurant info
+                    marker.bindPopup(`
+                        <div style="color: #333; font-family: Arial, sans-serif;">
+                            <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px;">${restaurant.name}</h3>
+                            <div style="font-size: 12px; color: #6b7280;">
+                                <div><strong>Visits:</strong> ${restaurant.visits}</div>
+                                <div><strong>Total Spent:</strong> $${restaurant.totalSpent.toFixed(2)}</div>
+                                <div><strong>Avg per Visit:</strong> $${avgSpent.toFixed(2)} (${priceCategory})</div>
+                            </div>
+                        </div>
+                    `);
+                });
+                
+                console.log('🎯 Added', restaurants.size, 'restaurant markers to map');
+                
+                // Fit map to show all markers if there are any
+                if (restaurants.size > 0) {
+                    const group = new L.featureGroup(Array.from(map.eachLayer(layer => layer instanceof L.Marker ? layer : null)).filter(Boolean));
+                    if (group.getBounds().isValid()) {
+                        map.fitBounds(group.getBounds().pad(0.1));
+                    }
+                }
+            }
+
 
             function showLoader() {
                 document.getElementById('loader-container').style.opacity = '1';
@@ -366,4 +511,3 @@
 </body>
 
 </html>
-

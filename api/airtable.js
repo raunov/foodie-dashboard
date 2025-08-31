@@ -31,6 +31,10 @@ module.exports = async (req, res) => {
 
     const data = await airtableResponse.json();
     
+    // Log the data for debugging purposes
+    console.log('Airtable API Response:', JSON.stringify(data, null, 2));
+    console.log('Number of records returned:', data.records ? data.records.length : 0);
+    
     // Set caching headers to allow Vercel to cache the response for a short time
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
     
