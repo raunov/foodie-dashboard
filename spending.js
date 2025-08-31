@@ -616,9 +616,9 @@ function renderLineChart(canvasId, title, labels, datasets) {
 
 function createInsightCard(title, value, isChart = false) {
     const card = `
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h3 class="text-xl font-semibold mb-2">${title}</h3>
-            ${isChart ? value : `<p class="text-3xl font-bold">${value}</p>`}
+        <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] hover:border-[var(--primary-color)] transition-all duration-300 transform hover:-translate-y-1">
+            <h3 class="text-lg font-semibold text-white mb-2">${title}</h3>
+            ${isChart ? value : `<div class="text-3xl font-bold text-white mt-2 font-poppins">${value}</div>`}
         </div>
     `;
     return card;
@@ -626,12 +626,10 @@ function createInsightCard(title, value, isChart = false) {
 
 function createAchievementBadge(name, description, unlocked = false) {
     const badge = `
-        <div class="text-center ${unlocked ? '' : 'achievement-locked'}">
-            <div class="bg-white p-4 rounded-full shadow-md inline-block">
-                <svg class="w-16 h-16 ${unlocked ? 'text-yellow-500' : 'text-gray-400'}" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"></path></svg>
-            </div>
-            <h4 class="font-semibold mt-2">${name}</h4>
-            <p class="text-sm text-gray-500">${description}</p>
+        <div class="flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer hover:bg-gray-700 transition-colors ${unlocked ? '' : 'achievement-locked'}">
+            <span class="material-symbols-outlined text-4xl ${unlocked ? 'text-yellow-400' : 'text-gray-500'} group-hover:animate-bounce">military_tech</span>
+            <p class="text-sm font-semibold ${unlocked ? 'text-white' : 'text-gray-400'} mt-2">${name}</p>
+            <p class="text-xs text-gray-500">${description}</p>
         </div>
     `;
     return badge;
