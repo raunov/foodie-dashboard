@@ -596,7 +596,7 @@ function createInsightCard(title, value, isChart = false, icon = 'info', color =
 
     const tooltipHtml = description 
         ? `<div class="tooltip-container">
-               <span class="material-symbols-outlined tooltip-icon">info</span>
+               <span class="material-symbols-outlined">info</span>
                <span class="tooltip-text">${description}</span>
            </div>` 
         : '';

@@ -99,15 +99,13 @@ body.body-no-scroll {
 }
 
 .tooltip-container {
-    position: relative;
-    display: inline-block;
-}
-
-.tooltip-icon {
-    cursor: pointer;
     position: absolute;
     top: 1rem;
     right: 1rem;
+    cursor: pointer;
+}
+
+.tooltip-container .material-symbols-outlined {
     color: var(--text-secondary);
 }
 
