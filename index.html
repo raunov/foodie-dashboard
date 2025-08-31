@@ -141,14 +141,14 @@
                 <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--primary-color)] transition-all duration-300 transform hover:-translate-y-1">
                     <div>
                         <p class="text-sm font-medium text-[var(--text-secondary)]">Total Spent</p>
-                        <p id="total-spent" class="text-4xl font-bold text-white mt-2 font-poppins">$0.00</p>
+                        <p id="total-spent" class="text-4xl font-bold text-white mt-2 font-poppins">€0.00</p>
                     </div>
                     <p class="text-xs text-[var(--text-secondary)] mt-4">That's a lot of good food!</p>
                 </div>
                 <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--accent-purple)] transition-all duration-300 transform hover:-translate-y-1">
                     <div>
                         <p class="text-sm font-medium text-[var(--text-secondary)]">Average Bill</p>
-                        <p id="average-bill" class="text-4xl font-bold text-[var(--accent-purple)] mt-2 font-poppins">$0.00</p>
+                        <p id="average-bill" class="text-4xl font-bold text-[var(--accent-purple)] mt-2 font-poppins">€0.00</p>
                     </div>
                     <p class="text-xs text-[var(--text-secondary)] mt-4">Treating yourself, we see.</p>
                 </div>
@@ -213,9 +213,9 @@
                         <div class="flex justify-between items-center mb-4">
                             <p class="text-sm text-[var(--text-secondary)]">Discover where your taste buds have taken you.</p>
                             <div class="flex items-center gap-4 text-xs text-[var(--text-secondary)]">
-                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--primary-color)]"></span>$</div>
-                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-yellow)]"></span>$$</div>
-                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-red)]"></span>$$$</div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--primary-color)]"></span>€</div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-yellow)]"></span>€€</div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-red)]"></span>€€€</div>
                             </div>
                         </div>
                         <div id="foodie-map" class="h-[218px] bg-gray-800 rounded-lg overflow-hidden"></div>
@@ -296,8 +296,8 @@
                 const billsTracked = bills.length;
                 const averageBill = billsTracked > 0 ? totalSpent / billsTracked : 0;
 
-                document.getElementById('total-spent').textContent = `$${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                document.getElementById('average-bill').textContent = `$${averageBill.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('total-spent').textContent = `€${totalSpent.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('average-bill').textContent = `€${averageBill.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 document.getElementById('bills-tracked').textContent = billsTracked;
             }
 
@@ -350,7 +350,7 @@
                 const tuesdayBills = bills.filter(bill => bill.Kuupäev && new Date(bill.Kuupäev).getDay() === 2);
                 const totalTuesdaySpent = tuesdayBills.reduce((sum, bill) => sum + (bill.Kokku || 0), 0);
                 const avgTuesday = tuesdayBills.length > 0 ? totalTuesdaySpent / tuesdayBills.length : 0;
-                document.getElementById('average-tuesday-meal').textContent = avgTuesday > 0 ? `$${avgTuesday.toFixed(2)}` : 'N/A';
+                document.getElementById('average-tuesday-meal').textContent = avgTuesday > 0 ? `€${avgTuesday.toFixed(2)}` : 'N/A';
                 
                 // 4. Most Ordered Dish - handle different data structures and filter out record IDs
                 let allDishes = [];
@@ -483,11 +483,13 @@
                     const [lat, lng] = bill.coordinates.split(',').map(Number);
                     const restaurantName = bill.Nimetus || 'Unknown Restaurant';
                     const amount = bill.Kokku || 0;
+                    const originalAmount = bill.KokkuOrig || 0;
+                    const currency = bill.Valuuta || '';
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        let markerColor = '#10b981'; // Green for $
-                        if (amount > 75) markerColor = '#ef4444'; // Red for $$$
-                        else if (amount > 35) markerColor = '#f59e0b'; // Yellow for $$
+                        let markerColor = '#10b981'; // Green for €
+                        if (amount > 75) markerColor = '#ef4444'; // Red for €€€
+                        else if (amount > 35) markerColor = '#f59e0b'; // Yellow for €€
 
                         const el = document.createElement('div');
                         el.style.backgroundColor = markerColor;
@@ -496,16 +498,23 @@
                         el.style.borderRadius = '50%';
                         el.style.border = '2px solid white';
                         el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+                        
+                        let popupHTML = `
+                            <div style="color: #333; font-family: Arial, sans-serif;">
+                                <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px;">${restaurantName}</h3>
+                                <div style="font-size: 12px; color: #6b7280;">
+                                    <strong>Total Spent:</strong> €${amount.toFixed(2)}`;
+                        
+                        if (currency && currency !== 'EUR' && originalAmount > 0) {
+                            popupHTML += ` (${originalAmount.toFixed(2)} ${currency})`;
+                        }
+                        
+                        popupHTML += `
+                                    </div>
+                                </div>`;
 
                         const popup = new mapboxgl.Popup({ offset: 25 })
-                            .setHTML(`
-                                <div style="color: #333; font-family: Arial, sans-serif;">
-                                    <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px;">${restaurantName}</h3>
-                                    <div style="font-size: 12px; color: #6b7280;">
-                                        <strong>Total Spent:</strong> $${amount.toFixed(2)}
-                                    </div>
-                                </div>
-                            `);
+                            .setHTML(popupHTML);
 
                         const marker = new mapboxgl.Marker(el)
                             .setLngLat([lng, lat])
