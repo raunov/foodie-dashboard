@@ -304,15 +304,35 @@
                     Object.keys(monthlySpending).reduce((a, b) => monthlySpending[a] > monthlySpending[b] ? a : b) : 'N/A';
                 document.getElementById('most-adventurous-month').textContent = topMonth;
 
-                // 2. New Cuisines Tried - try multiple possible field names
+                // 2. New Cuisines Tried - try multiple possible field names and handle arrays
                 let cuisines = [];
                 bills.forEach(bill => {
-                    const cuisine = bill.Cuisine || bill.cuisine || bill.Köök || bill.Restaurant || bill.Restoran;
-                    if (cuisine && typeof cuisine === 'string') {
-                        cuisines.push(cuisine);
+                    // Try different field names for cuisines
+                    const cuisineField = bill.Cuisine || bill.cuisine || bill.Köök || bill.Restaurant || bill.Restoran || bill.Köögitüüp || bill.Tüüp;
+                    
+                    if (Array.isArray(cuisineField)) {
+                        // If it's an array, add all cuisines
+                        cuisines.push(...cuisineField.filter(c => typeof c === 'string'));
+                    } else if (typeof cuisineField === 'string') {
+                        cuisines.push(cuisineField);
+                    }
+                    
+                    // Also extract cuisine from restaurant names that might contain cuisine type
+                    const restaurantName = bill.Restoran || bill.Restaurant || bill.restoran || bill.restaurant;
+                    if (restaurantName && typeof restaurantName === 'string') {
+                        // Extract cuisine hints from restaurant names
+                        const lowerName = restaurantName.toLowerCase();
+                        if (lowerName.includes('pizza')) cuisines.push('Italian');
+                        if (lowerName.includes('sushi') || lowerName.includes('ramen')) cuisines.push('Japanese');
+                        if (lowerName.includes('burger')) cuisines.push('American');
+                        if (lowerName.includes('thai')) cuisines.push('Thai');
+                        if (lowerName.includes('indian')) cuisines.push('Indian');
+                        if (lowerName.includes('chinese')) cuisines.push('Chinese');
+                        if (lowerName.includes('mexican')) cuisines.push('Mexican');
+                        if (lowerName.includes('korean')) cuisines.push('Korean');
                     }
                 });
-                const uniqueCuisines = [...new Set(cuisines)].length;
+                const uniqueCuisines = [...new Set(cuisines.filter(Boolean))].length;
                 document.getElementById('new-cuisines-tried').textContent = uniqueCuisines > 0 ? `${uniqueCuisines} Cuisines` : 'N/A';
 
                 // 3. Average Tuesday Meal
@@ -321,25 +341,42 @@
                 const avgTuesday = tuesdayBills.length > 0 ? totalTuesdaySpent / tuesdayBills.length : 0;
                 document.getElementById('average-tuesday-meal').textContent = avgTuesday > 0 ? `$${avgTuesday.toFixed(2)}` : 'N/A';
                 
-                // 4. Most Ordered Dish - handle different data structures
+                // 4. Most Ordered Dish - handle different data structures and filter out record IDs
                 let allDishes = [];
                 bills.forEach(bill => {
                     // Try different possible field names for dishes
                     const dishes = bill.Toidud || bill.toidud || bill.Dishes || bill.dishes || bill.Food || bill.food;
                     if (Array.isArray(dishes)) {
-                        // If it's an array, add all dishes
-                        allDishes.push(...dishes.filter(dish => typeof dish === 'string'));
-                    } else if (typeof dishes === 'string') {
-                        // If it's a single string, add it
+                        // If it's an array, add all dishes but filter out Airtable record IDs
+                        allDishes.push(...dishes.filter(dish => 
+                            typeof dish === 'string' && 
+                            !dish.startsWith('rec') && // Filter out Airtable record IDs
+                            dish.length < 50 // Reasonable dish name length
+                        ));
+                    } else if (typeof dishes === 'string' && !dishes.startsWith('rec') && dishes.length < 50) {
+                        // If it's a single string and not a record ID, add it
                         allDishes.push(dishes);
                     }
                     
-                    // Also try restaurant name as a fallback
+                    // If no valid dishes found, use restaurant name as fallback
                     const restaurant = bill.Restoran || bill.Restaurant || bill.restoran || bill.restaurant;
-                    if (!dishes && restaurant && typeof restaurant === 'string') {
+                    if (allDishes.length === 0 && restaurant && typeof restaurant === 'string') {
                         allDishes.push(restaurant);
                     }
                 });
+                
+                // If still no dishes, create generic categories based on spending patterns
+                if (allDishes.length === 0) {
+                    bills.forEach(bill => {
+                        const amount = bill.Kokku || 0;
+                        if (amount > 0) {
+                            if (amount < 15) allDishes.push('Quick Bite');
+                            else if (amount < 30) allDishes.push('Casual Meal');
+                            else if (amount < 60) allDishes.push('Fine Dining');
+                            else allDishes.push('Premium Experience');
+                        }
+                    });
+                }
                 
                 if (allDishes.length > 0) {
                     const dishCounts = allDishes.reduce((acc, dish) => {
