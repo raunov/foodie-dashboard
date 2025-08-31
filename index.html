@@ -51,6 +51,8 @@
             align-items: center;
             z-index: 9999;
             transition: opacity 0.3s ease-in-out;
+            visibility: visible;
+            opacity: 1;
         }
 
         .spinner {
@@ -64,7 +66,7 @@
 
         @keyframes spin {
             to {
-                transform: rotate(3D);
+                transform: rotate(360deg);
             }
         }
     </style>
@@ -95,7 +97,25 @@
                         <span class="material-symbols-outlined">payments</span>
                         <span>Spending</span>
                     </a>
+                    <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="#">
+                        <span class="material-symbols-outlined">restaurant</span>
+                        <span>Restaurants</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="#">
+                        <span class="material-symbols-outlined">fastfood</span>
+                        <span>Dishes</span>
+                    </a>
                 </nav>
+            </div>
+            <div class="flex flex-col gap-2">
+                <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="#">
+                    <span class="material-symbols-outlined">summarize</span>
+                    <span>Reports</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="#">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Settings</span>
+                </a>
             </div>
         </aside>
         <main class="flex-1 p-4 sm:p-8 overflow-y-auto">
@@ -105,6 +125,10 @@
                     <p class="text-md lg:text-lg text-[var(--text-secondary)]">Your progress, your achievements. Let's get started!</p>
                 </div>
                 <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-[var(--card-color)] border border-[var(--border-color)] px-4 py-2 rounded-full text-[var(--accent-yellow)]">
+                        <span class="material-symbols-outlined">military_tech</span>
+                        <span class="font-semibold text-sm">Foodie Level: Adventurous Eater</span>
+                    </div>
                     <button class="bg-[var(--primary-color)] text-white px-4 py-2 rounded-full flex items-center gap-2 hover:bg-emerald-500 transition-colors">
                         <span class="material-symbols-outlined">add</span>
                         <span>Add Bill</span>
@@ -112,27 +136,99 @@
                 </div>
             </header>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
+                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--primary-color)] transition-all duration-300 transform hover:-translate-y-1">
                     <div>
                         <p class="text-sm font-medium text-[var(--text-secondary)]">Total Spent</p>
                         <p id="total-spent" class="text-4xl font-bold text-white mt-2 font-poppins">$0.00</p>
                     </div>
+                    <p class="text-xs text-[var(--text-secondary)] mt-4">That's a lot of good food!</p>
                 </div>
-                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
+                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--accent-purple)] transition-all duration-300 transform hover:-translate-y-1">
                     <div>
                         <p class="text-sm font-medium text-[var(--text-secondary)]">Average Bill</p>
                         <p id="average-bill" class="text-4xl font-bold text-[var(--accent-purple)] mt-2 font-poppins">$0.00</p>
                     </div>
+                    <p class="text-xs text-[var(--text-secondary)] mt-4">Treating yourself, we see.</p>
                 </div>
-                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
+                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--accent-blue)] transition-all duration-300 transform hover:-translate-y-1">
                     <div>
                         <p class="text-sm font-medium text-[var(--text-secondary)]">Bills Tracked</p>
                         <p id="bills-tracked" class="text-4xl font-bold text-[var(--accent-blue)] mt-2 font-poppins">0</p>
                     </div>
+                    <p class="text-xs text-[var(--text-secondary)] mt-4">Keep 'em coming!</p>
                 </div>
-                <div class="bg-gradient-to-br from-yellow-400 to-orange-500 p-6 rounded-2xl flex flex-col justify-center items-center text-center text-white">
+                <div class="bg-gradient-to-br from-yellow-400 to-orange-500 p-6 rounded-2xl flex flex-col justify-center items-center text-center text-white transform hover:scale-105 transition-transform duration-300 cursor-pointer">
                     <span class="material-symbols-outlined text-4xl">emoji_events</span>
                     <p class="text-lg font-bold mt-2">New Achievement!</p>
+                    <p class="text-xs mt-1">"Frequent Fryer"</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
+                        <h2 class="text-xl font-semibold text-white mb-4">Insights</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                                <div class="bg-[var(--accent-purple)] p-3 rounded-full">
+                                    <span class="material-symbols-outlined text-white">calendar_month</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-[var(--text-secondary)]">Most Adventurous Month</p>
+                                    <p id="most-adventurous-month" class="font-bold text-lg text-white">...</p>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                                <div class="bg-[var(--primary-color)] p-3 rounded-full">
+                                    <span class="material-symbols-outlined text-white">public</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-[var(--text-secondary)]">New Cuisines Tried</p>
+                                    <p id="new-cuisines-tried" class="font-bold text-lg text-white">...</p>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                                <div class="bg-[var(--accent-blue)] p-3 rounded-full">
+                                    <span class="material-symbols-outlined text-white">attach_money</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-[var(--text-secondary)]">Average Tuesday Meal</p>
+                                    <p id="average-tuesday-meal" class="font-bold text-lg text-white">...</p>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                                <div class="bg-[var(--accent-yellow)] p-3 rounded-full">
+                                    <span class="material-symbols-outlined text-white">restaurant_menu</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-[var(--text-secondary)]">Most Ordered Dish</p>
+                                    <p id="most-ordered-dish" class="font-bold text-lg text-white">...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
+                        <h2 class="text-xl font-semibold text-white mb-4">Your Foodie Map</h2>
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-sm text-[var(--text-secondary)]">Discover where your taste buds have taken you.</p>
+                            <div class="flex items-center gap-4 text-xs text-[var(--text-secondary)]">
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--primary-color)]"></span>$</div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-yellow)]"></span>$$</div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-red)]"></span>$$$</div>
+                            </div>
+                        </div>
+                        <div class="h-[218px] bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden">
+                            <img alt="Map of restaurant locations" class="w-full h-full object-cover rounded-lg transform hover:scale-110 transition-transform duration-500" src="https://placehold.co/800x400/1f2937/9ca3af?text=Your+Foodie+Map" />
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-1 bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
+                    <h2 class="text-xl font-semibold text-white mb-4">Achievements Unlocked</h2>
+                    <div id="achievements-grid" class="grid grid-cols-2 gap-4">
+                         <div class="flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer border-2 border-dashed border-gray-600 hover:bg-gray-700 transition-colors">
+                            <span class="text-4xl text-gray-500">❓</span>
+                            <p class="text-sm font-semibold text-gray-400 mt-2">Mystery Badge</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -144,7 +240,6 @@
             async function initializeDashboard() {
                 showLoader();
                 try {
-                    // Fetch data from our own server endpoint, not directly from Airtable
                     const response = await fetch('/api/airtable');
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -166,6 +261,8 @@
 
             function updateDashboard(bills) {
                 updateStats(bills);
+                updateInsights(bills);
+                updateAchievements(bills);
             }
 
             function updateStats(bills) {
@@ -177,6 +274,79 @@
                 document.getElementById('average-bill').textContent = `$${averageBill.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 document.getElementById('bills-tracked').textContent = billsTracked;
             }
+
+            function updateInsights(bills) {
+                // 1. Most Adventurous Month (most spent)
+                const monthlySpending = bills.reduce((acc, bill) => {
+                    if (!bill.Kuupäev) return acc;
+                    const month = new Date(bill.Kuupäev).toLocaleString('default', { month: 'long' });
+                    acc[month] = (acc[month] || 0) + (bill.Kokku || 0);
+                    return acc;
+                }, {});
+                const topMonth = Object.keys(monthlySpending).reduce((a, b) => monthlySpending[a] > monthlySpending[b] ? a : b, 'N/A');
+                document.getElementById('most-adventurous-month').textContent = topMonth;
+
+                // 2. New Cuisines Tried
+                const uniqueCuisines = [...new Set(bills.map(bill => bill.Cuisine).filter(Boolean))].length;
+                document.getElementById('new-cuisines-tried').textContent = `${uniqueCuisines} Cuisines`;
+
+                // 3. Average Tuesday Meal
+                const tuesdayBills = bills.filter(bill => bill.Kuupäev && new Date(bill.Kuupäev).getDay() === 2);
+                const totalTuesdaySpent = tuesdayBills.reduce((sum, bill) => sum + (bill.Kokku || 0), 0);
+                const avgTuesday = tuesdayBills.length > 0 ? totalTuesdaySpent / tuesdayBills.length : 0;
+                document.getElementById('average-tuesday-meal').textContent = avgTuesday > 0 ? `$${avgTuesday.toFixed(2)}` : 'N/A';
+                
+                // 4. Most Ordered Dish
+                const dishCounts = (bills.flatMap(bill => bill.Toidud || [])).reduce((acc, dish) => {
+                    acc[dish] = (acc[dish] || 0) + 1;
+                    return acc;
+                }, {});
+                const topDish = Object.keys(dishCounts).reduce((a, b) => dishCounts[a] > dishCounts[b] ? a : b, 'N/A');
+                document.getElementById('most-ordered-dish').textContent = topDish;
+            }
+
+            function updateAchievements(bills) {
+                const achievements = [];
+                const totalSpent = bills.reduce((sum, bill) => sum + (bill.Kokku || 0), 0);
+                const uniqueCuisines = [...new Set(bills.map(b => b.Cuisine).filter(Boolean))];
+                const hasRamen = bills.some(b => b.Toidud && b.Toidud.includes('Ramen')); // Example, make more generic if needed
+
+                if (bills.length > 0) {
+                    achievements.push({ icon: '🏆', name: 'First Bill', detail: 'Welcome!', color: 'text-yellow-400' });
+                }
+                if (hasRamen) {
+                     achievements.push({ icon: '🍜', name: 'Noodle Novice', detail: 'First ramen', color: '' });
+                }
+                if (uniqueCuisines.length >= 5) {
+                    achievements.push({ icon: 'explore', name: 'Cuisine Pro', detail: 'Tried 5 Cuisines', color: 'text-purple-400', isMaterial: true });
+                }
+                if (totalSpent > 1000) {
+                    achievements.push({ icon: 'paid', name: 'Big Spender', detail: '$1000 total', color: 'text-red-400', isMaterial: true });
+                }
+
+                const grid = document.getElementById('achievements-grid');
+                grid.innerHTML = ''; // Clear existing
+                achievements.forEach(ach => {
+                    const iconHtml = ach.isMaterial 
+                        ? `<span class="material-symbols-outlined text-4xl ${ach.color} group-hover:animate-bounce">${ach.icon}</span>`
+                        : `<span class="text-4xl ${ach.color} group-hover:animate-bounce">${ach.icon}</span>`;
+
+                    const div = document.createElement('div');
+                    div.className = 'flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer hover:bg-gray-700 transition-colors';
+                    div.innerHTML = `
+                        ${iconHtml}
+                        <p class="text-sm font-semibold text-white mt-2">${ach.name}</p>
+                        <p class="text-xs text-gray-400">${ach.detail}</p>
+                    `;
+                    grid.appendChild(div);
+                });
+                
+                const mysteryBadge = document.createElement('div');
+                mysteryBadge.className = 'flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer border-2 border-dashed border-gray-600 hover:bg-gray-700 transition-colors';
+                mysteryBadge.innerHTML = `<span class="text-4xl text-gray-500">❓</span><p class="text-sm font-semibold text-gray-400 mt-2">Mystery Badge</p>`;
+                grid.appendChild(mysteryBadge);
+            }
+
 
             function showLoader() {
                 document.getElementById('loader-container').style.opacity = '1';
@@ -196,3 +366,4 @@
 </body>
 
 </html>
+
