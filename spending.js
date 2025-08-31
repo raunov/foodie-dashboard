@@ -29,68 +29,32 @@ function processAndRenderInsights(records) {
     const localRecords = records.filter(r => r.fields['Spend Type'] === 'Local');
     const travelRecords = records.filter(r => r.fields['Spend Type'] === 'Travel');
 
-    // 1. Total Spent
-    const totalSpent = calculateTotalSpent(records);
-    let totalSpentHtml = `Local: ${totalSpent.local.ytd}€ (YTD) | Travel: ${totalSpent.travel.ytd}€ (YTD)`;
-    insightsGrid.innerHTML += createInsightCard('Total Spent', totalSpentHtml);
+    const insights = [
+        { title: 'Total Spent', value: `Local: ${calculateTotalSpent(records).local.ytd}€ (YTD) | Travel: ${calculateTotalSpent(records).travel.ytd}€ (YTD)`, icon: 'paid', color: 'var(--primary-color)' },
+        { title: 'Average & Median Bill', value: `Local: ${calculateAverageAndMedianBill(localRecords, travelRecords).local.avg}€ (Avg)<br>Travel: ${calculateAverageAndMedianBill(localRecords, travelRecords).travel.avg}€ (Avg)`, icon: 'monitoring', color: 'var(--accent-purple)' },
+        { title: 'Weekday Profile', chartId: 'weekdayProfileChart', type: 'bar', data: calculateWeekdayProfile(records), icon: 'calendar_month', color: 'var(--accent-blue)' },
+        { title: 'Time-of-day Mix', chartId: 'timeOfDayChart', type: 'pie', data: calculateTimeOfDayMix(records), icon: 'schedule', color: 'var(--accent-yellow)' },
+        { title: 'Seasonality & Trend', chartId: 'seasonalityChart', type: 'line', data: calculateSeasonality(records), icon: 'trending_up', color: 'var(--primary-color)', colSpan: 'lg:col-span-2' },
+        { title: 'Spend Volatility', value: `Std Dev: ${calculateSpendVolatility(records).stdDev}€<br>Outlier Days: ${calculateSpendVolatility(records).outlierDays}`, icon: 'warning', color: 'var(--accent-red)' },
+        { title: 'Spend Share (€)', chartId: 'spendShareValueChart', type: 'pie', data: { labels: calculateLocalVsTravelShare(localRecords, travelRecords).labels, data: calculateLocalVsTravelShare(localRecords, travelRecords).valueData }, icon: 'public', color: 'var(--accent-purple)' },
+        { title: 'Travel Premium', value: `${calculateLocalVsTravelShare(localRecords, travelRecords).travelPremium}x`, icon: 'flight_takeoff', color: 'var(--accent-blue)' },
+        { title: 'Avg. Cost per Person', value: Object.entries(calculateFamilyInvolvement(records)).map(([size, avg]) => `${size}p: ${avg}€`).join('<br>') || 'N/A', icon: 'groups', color: 'var(--accent-yellow)' },
+        { title: 'Dining Streaks', value: `Streak: ${calculateStreaks(records).longestStreak} days<br>Gap: ${calculateStreaks(records).longestGap} days`, icon: 'local_fire_department', color: 'var(--accent-red)' },
+        { title: 'Weekend Effect', value: `Δ ${calculateWeekendEffect(records).deltaPercent}%`, icon: 'deck', color: 'var(--primary-color)' },
+        { title: 'Photo Coverage', value: `${calculateAttachmentCoverage(records).coveragePercent}%`, icon: 'attachment', color: 'var(--accent-purple)' },
+        { title: 'Top City', value: (calculateCityMix(records).top5[0] || ['N/A'])[0], icon: 'location_city', color: 'var(--accent-blue)' },
+    ];
 
-    // 2. Average & Median Bill
-    const avgMedian = calculateAverageAndMedianBill(localRecords, travelRecords);
-    let avgMedianHtml = `Local: ${avgMedian.local.avg}€ (Avg), ${avgMedian.local.median}€ (Median)<br>Travel: ${avgMedian.travel.avg}€ (Avg), ${avgMedian.travel.median}€ (Median)`;
-    insightsGrid.innerHTML += createInsightCard('Average & Median Bill', avgMedianHtml);
-
-    // 3. Weekday Profile
-    const weekdayProfile = calculateWeekdayProfile(records);
-    insightsGrid.innerHTML += createInsightCard('Weekday Profile', '<canvas id="weekdayProfileChart"></canvas>', true);
-    renderBarChart('weekdayProfileChart', 'Average Spend by Day', weekdayProfile.labels, weekdayProfile.data);
-
-    // 4. Time-of-day Mix
-    const timeOfDayMix = calculateTimeOfDayMix(records);
-    insightsGrid.innerHTML += createInsightCard('Time-of-day Mix', '<canvas id="timeOfDayChart"></canvas>', true);
-    renderPieChart('timeOfDayChart', 'Spend by Time of Day', timeOfDayMix.labels, timeOfDayMix.data);
-
-    // 5. Seasonality & Trend
-    const seasonality = calculateSeasonality(records);
-    insightsGrid.innerHTML += createInsightCard('Seasonality & Trend', '<canvas id="seasonalityChart"></canvas>', true);
-    renderLineChart('seasonalityChart', 'Monthly Spend', seasonality.labels, seasonality.datasets);
-
-    // 6. Spend Volatility
-    const volatility = calculateSpendVolatility(records);
-    let volatilityHtml = `Std Dev: ${volatility.stdDev}€<br>Outlier Days: ${volatility.outlierDays}`;
-    insightsGrid.innerHTML += createInsightCard('Spend Volatility', volatilityHtml);
-
-    // 7. Local vs Travel Spend Share
-    const spendShare = calculateLocalVsTravelShare(localRecords, travelRecords);
-    insightsGrid.innerHTML += createInsightCard('Spend Share (Count)', '<canvas id="spendShareCountChart"></canvas>', true);
-    renderPieChart('spendShareCountChart', 'Share by Bill Count', spendShare.labels, spendShare.countData);
-    insightsGrid.innerHTML += createInsightCard('Spend Share (€)', '<canvas id="spendShareValueChart"></canvas>', true);
-    renderPieChart('spendShareValueChart', 'Share by Spend Value', spendShare.labels, spendShare.valueData);
-    insightsGrid.innerHTML += createInsightCard('Travel Premium', `${spendShare.travelPremium}x`);
-
-    // 8. Family Involvement Cost
-    const familyCost = calculateFamilyInvolvement(records);
-    let familyCostHtml = Object.entries(familyCost).map(([size, avg]) => `${size} people: ${avg}€/person`).join('<br>');
-    insightsGrid.innerHTML += createInsightCard('Avg. Cost per Person', familyCostHtml);
-
-    // 9. Streaks
-    const streaks = calculateStreaks(records);
-    let streaksHtml = `Longest Streak: ${streaks.longestStreak} days<br>Longest Gap: ${streaks.longestGap} days`;
-    insightsGrid.innerHTML += createInsightCard('Dining Streaks', streaksHtml);
-
-    // 10. Weekend Effect
-    const weekendEffect = calculateWeekendEffect(records);
-    let weekendEffectHtml = `Avg Weekend Bill: ${weekendEffect.avgWeekend}€<br>Avg Weekday Bill: ${weekendEffect.avgWeekday}€<br>Delta: ${weekendEffect.deltaPercent}%`;
-    insightsGrid.innerHTML += createInsightCard('Weekend Effect', weekendEffectHtml);
-
-    // 11. Attachment Coverage
-    const attachmentCoverage = calculateAttachmentCoverage(records);
-    let attachmentHtml = `Coverage: ${attachmentCoverage.coveragePercent}%<br>Avg w/ Photo: ${attachmentCoverage.avgWith}€<br>Avg w/o Photo: ${attachmentCoverage.avgWithout}€`;
-    insightsGrid.innerHTML += createInsightCard('Photo Attachment Coverage', attachmentHtml);
-
-    // 12. City Mix
-    const cityMix = calculateCityMix(records);
-    let cityMixHtml = cityMix.top5.map(([city, total]) => `${city}: ${total.toFixed(2)}€`).join('<br>') + `<br>Tallinn Share: ${cityMix.tallinnShare}%`;
-    insightsGrid.innerHTML += createInsightCard('Top 5 Cities by Spend', cityMixHtml);
+    insights.forEach(insight => {
+        if (insight.type) { // It's a chart
+            insightsGrid.innerHTML += createInsightCard(insight.title, `<canvas id="${insight.chartId}"></canvas>`, true, insight.icon, insight.color, insight.colSpan);
+            if (insight.type === 'bar') renderBarChart(insight.chartId, insight.title, insight.data.labels, insight.data.data);
+            if (insight.type === 'pie') renderPieChart(insight.chartId, insight.title, insight.data.labels, insight.data.data);
+            if (insight.type === 'line') renderLineChart(insight.chartId, insight.title, insight.data.labels, insight.data.datasets);
+        } else { // It's text
+            insightsGrid.innerHTML += createInsightCard(insight.title, insight.value, false, insight.icon, insight.color, insight.colSpan);
+        }
+    });
 }
 
 function processAndRenderAchievements(records) {
@@ -98,20 +62,20 @@ function processAndRenderAchievements(records) {
     achievementsGrid.innerHTML = ''; // Clear previous content
 
     const achievements = [
-        { name: 'First Bite', desc: 'First restaurant bill', unlocked: checkFirstBite(records) },
-        { name: 'Tallinn Loyalist', desc: '≥20 local bills in 90 days', unlocked: checkTallinnLoyalist(records) },
-        { name: 'Globe Taster', desc: 'Bills in ≥3 countries', unlocked: checkGlobeTaster(records) },
-        { name: 'Weekend Warrior', desc: 'Bills on 6 consecutive weekends', unlocked: checkWeekendWarrior(records) },
-        { name: 'Budget Ninja', desc: '2 months avg. bill ≤ 6-mo avg -15%', unlocked: checkBudgetNinja(records) },
-        { name: 'Consistency Streak', desc: '10+ consecutive days with a bill', unlocked: checkConsistencyStreak(records) },
-        { name: 'Travel Premium Crusher', desc: 'A trip where avg travel bill was cheap', unlocked: checkTravelPremiumCrusher(records) },
-        { name: 'Family Feast', desc: 'A bill for ≥4 people at ≤15€/person', unlocked: checkFamilyFeast(records) },
-        { name: '€500 Month', desc: 'Spend ≥€500 in a single month', unlocked: check500Month(records) },
-        { name: 'Photo Historian', desc: '≥60% of bills have photos in a month', unlocked: checkPhotoHistorian(records) }
+        { name: 'First Bite', desc: 'First restaurant bill', unlocked: checkFirstBite(records), icon: 'restaurant' },
+        { name: 'Tallinn Loyalist', desc: '≥20 local bills in 90 days', unlocked: checkTallinnLoyalist(records), icon: 'location_city' },
+        { name: 'Globe Taster', desc: 'Bills in ≥3 countries', unlocked: checkGlobeTaster(records), icon: 'public' },
+        { name: 'Weekend Warrior', desc: 'Bills on 6 consecutive weekends', unlocked: checkWeekendWarrior(records), icon: 'sports_esports' },
+        { name: 'Budget Ninja', desc: '2 months avg. bill ≤ 6-mo avg -15%', unlocked: checkBudgetNinja(records), icon: 'savings' },
+        { name: 'Consistency Streak', desc: '10+ consecutive days with a bill', unlocked: checkConsistencyStreak(records), icon: 'event_repeat' },
+        { name: 'Travel Premium Crusher', desc: 'A trip where avg travel bill was cheap', unlocked: checkTravelPremiumCrusher(records), icon: 'flight_takeoff' },
+        { name: 'Family Feast', desc: 'A bill for ≥4 people at ≤15€/person', unlocked: checkFamilyFeast(records), icon: 'groups' },
+        { name: '€500 Month', desc: 'Spend ≥€500 in a single month', unlocked: check500Month(records), icon: 'euro_symbol' },
+        { name: 'Photo Historian', desc: '≥60% of bills have photos in a month', unlocked: checkPhotoHistorian(records), icon: 'photo_camera' }
     ];
 
     achievements.forEach(ach => {
-        achievementsGrid.innerHTML += createAchievementBadge(ach.name, ach.desc, ach.unlocked);
+        achievementsGrid.innerHTML += createAchievementBadge(ach.name, ach.desc, ach.unlocked, ach.icon);
     });
 }
 
@@ -549,16 +513,16 @@ function renderBarChart(canvasId, label, labels, data) {
             datasets: [{
                 label: label,
                 data: data,
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(22, 163, 74, 0.6)',
+                borderColor: 'rgba(22, 163, 74, 1)',
                 borderWidth: 1
             }]
         },
         options: {
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: {
-                y: {
-                    beginAtZero: true
-                }
+                y: { beginAtZero: true, ticks: { color: 'white' }, grid: { color: '#374151' } },
+                x: { ticks: { color: 'white' }, grid: { color: '#374151' } }
             }
         }
     });
@@ -573,21 +537,12 @@ function renderPieChart(canvasId, title, labels, data) {
             datasets: [{
                 label: title,
                 data: data,
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 206, 86, 0.6)',
-                    'rgba(75, 192, 192, 0.6)'
-                ],
+                backgroundColor: ['#8b5cf6', '#3b82f6', '#f59e0b', '#ef4444', '#10b981'],
             }]
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                }
-            }
+            plugins: { legend: { position: 'top', labels: { color: 'white' } } }
         }
     });
 }
@@ -598,14 +553,19 @@ function renderLineChart(canvasId, title, labels, datasets) {
         type: 'line',
         data: {
             labels: labels,
-            datasets: datasets
+            datasets: datasets.map((ds, i) => ({
+                ...ds,
+                borderColor: i === 0 ? 'var(--primary-color)' : 'var(--accent-purple)',
+                backgroundColor: i === 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                fill: true,
+            }))
         },
         options: {
             responsive: true,
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: {
-                y: {
-                    beginAtZero: true
-                }
+                y: { beginAtZero: true, ticks: { color: 'white' }, grid: { color: '#374151' } },
+                x: { ticks: { color: 'white' }, grid: { color: '#374151' } }
             }
         }
     });
@@ -614,20 +574,25 @@ function renderLineChart(canvasId, title, labels, datasets) {
 
 // --- Helper functions for creating UI elements ---
 
-function createInsightCard(title, value, isChart = false) {
+function createInsightCard(title, value, isChart = false, icon = 'info', color = 'var(--primary-color)', colSpan = '') {
     const card = `
-        <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] hover:border-[var(--primary-color)] transition-all duration-300 transform hover:-translate-y-1">
-            <h3 class="text-lg font-semibold text-white mb-2">${title}</h3>
-            ${isChart ? value : `<div class="text-3xl font-bold text-white mt-2 font-poppins">${value}</div>`}
+        <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] hover:border-[${color}] transition-all duration-300 transform hover:-translate-y-1 ${colSpan}">
+            <div class="flex items-center gap-4 mb-2">
+                <div class="p-2 rounded-full" style="background-color: ${color}33;">
+                    <span class="material-symbols-outlined" style="color: ${color};">${icon}</span>
+                </div>
+                <h3 class="text-lg font-semibold text-white">${title}</h3>
+            </div>
+            ${isChart ? value : `<div class="text-3xl font-bold text-white mt-4 font-poppins">${value}</div>`}
         </div>
     `;
     return card;
 }
 
-function createAchievementBadge(name, description, unlocked = false) {
+function createAchievementBadge(name, description, unlocked = false, icon = 'military_tech') {
     const badge = `
         <div class="flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg text-center aspect-square group cursor-pointer hover:bg-gray-700 transition-colors ${unlocked ? '' : 'achievement-locked'}">
-            <span class="material-symbols-outlined text-4xl ${unlocked ? 'text-yellow-400' : 'text-gray-500'} group-hover:animate-bounce">military_tech</span>
+            <span class="material-symbols-outlined text-4xl ${unlocked ? 'text-yellow-400' : 'text-gray-500'} group-hover:animate-bounce">${icon}</span>
             <p class="text-sm font-semibold ${unlocked ? 'text-white' : 'text-gray-400'} mt-2">${name}</p>
             <p class="text-xs text-gray-500">${description}</p>
         </div>
