@@ -43,9 +43,13 @@ async function fetchDataAndRender() {
         processAndRenderInsights(records);
         processAndRenderAchievements(records);
 
+        // Hide the loader
+        document.getElementById('loader-container').style.display = 'none';
     } catch (error) {
         console.error('Failed to fetch or render data:', error);
         document.getElementById('insights-grid').innerHTML = `<p class="text-red-500">Error loading data.</p>`;
+        // Hide the loader even if there's an error
+        document.getElementById('loader-container').style.display = 'none';
     }
 }
 
