@@ -20,30 +20,36 @@ module.exports = async (req, res) => {
   }
 
   // 1. Fetch only "Restoran" activities from the "Tegevused" table using the specified view
-  const tegevusedUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?view=${AIRTABLE_RESTAURANT_VIEW_ID}`;
+  let tegevusedRecords = [];
+  let offset = null;
+  const baseUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?view=${AIRTABLE_RESTAURANT_VIEW_ID}`;
 
   try {
-    const tegevusedResponse = await fetch(tegevusedUrl, {
-      headers: {
-        'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-      },
-    });
+    do {
+      const tegevusedUrl = offset ? `${baseUrl}&offset=${offset}` : baseUrl;
+      const tegevusedResponse = await fetch(tegevusedUrl, {
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+        },
+      });
 
-    if (!tegevusedResponse.ok) {
-      const errorData = await tegevusedResponse.text();
-      console.error('Airtable API Error (Tegevused):', errorData);
-      return res.status(tegevusedResponse.status).json({ error: `Airtable API error (Tegevused): ${tegevusedResponse.statusText}` });
-    }
+      if (!tegevusedResponse.ok) {
+        const errorData = await tegevusedResponse.text();
+        console.error('Airtable API Error (Tegevused):', errorData);
+        return res.status(tegevusedResponse.status).json({ error: `Airtable API error (Tegevused): ${tegevusedResponse.statusText}` });
+      }
 
-    const tegevusedData = await tegevusedResponse.json();
-    const tegevusedRecords = tegevusedData.records || [];
+      const tegevusedData = await tegevusedResponse.json();
+      tegevusedRecords = tegevusedRecords.concat(tegevusedData.records || []);
+      offset = tegevusedData.offset;
+    } while (offset);
 
     // 2. Extract linked "Restoran" record IDs
     const restoranRecordIds = tegevusedRecords.flatMap(record => record.fields.Toidud || []);
 
     if (restoranRecordIds.length === 0) {
       // No linked items, just return the filtered activities
-      return res.status(200).json(tegevusedData);
+      return res.status(200).json({ records: tegevusedRecords });
     }
 
     // 3. Fetch linked records from the "Restoran" table
