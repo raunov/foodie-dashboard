@@ -33,6 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchDataAndRender() {
     try {
         const response = await fetch('/api/airtable');
+        if (response.status === 401) {
+            window.location.href = '/login.html';
+            return;
+        }
         if (!response.ok) {
             throw new Error(`API call failed with status: ${response.status}`);
         }

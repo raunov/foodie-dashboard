@@ -22,6 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // First, fetch the Mapbox token
             console.log('🔑 Fetching Mapbox token...');
             const tokenResponse = await fetch('/api/mapbox');
+            if (tokenResponse.status === 401) {
+                window.location.href = '/login.html';
+                return;
+            }
             if (!tokenResponse.ok) {
                 throw new Error(`Failed to fetch Mapbox token: ${tokenResponse.status}`);
             }
@@ -34,6 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const airtableResponse = await fetch('/api/airtable');
             console.log('📡 API Response status:', airtableResponse.status);
             
+            if (airtableResponse.status === 401) {
+                window.location.href = '/login.html';
+                return;
+            }
             if (!airtableResponse.ok) {
                 throw new Error(`HTTP error! status: ${airtableResponse.status}`);
             }
