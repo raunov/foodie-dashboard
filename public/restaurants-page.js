@@ -22,12 +22,12 @@ async function initializePage() {
         const airtableData = await airtableResponse.json();
 
         const records = airtableData.records || [];
-        const restaurants = processRestaurantData(records);
+        const activities = processActivityData(records);
 
-        renderRestaurantList(restaurants);
-        initializeMap(tokenData.token, restaurants);
+        renderActivityList(activities);
+        initializeMap(tokenData.token, activities);
 
-        setupEventListeners(restaurants);
+        setupEventListeners(activities);
 
     } catch (error) {
         console.error('Failed to initialize page:', error);
@@ -36,62 +36,40 @@ async function initializePage() {
     }
 }
 
-function processRestaurantData(records) {
-    const restaurantData = {};
-
-    records.forEach(record => {
-        const details = record.fields.ToidudDetails;
-        if (!details) return;
-
-        details.forEach(restaurant => {
-            const id = restaurant.id;
-            if (!restaurantData[id]) {
-                restaurantData[id] = {
-                    id: id,
-                    name: restaurant.fields.Nimetus,
-                    cuisine: restaurant.fields.Toit,
-                    city: restaurant.fields.Linn,
-                    country: restaurant.fields.Riik,
-                    visits: 0,
-                    totalSpend: 0,
-                    avgSpend: 0,
-                    lastVisit: new Date(0),
-                    coordinates: restaurant.fields.Coordinates,
-                    photoUrl: restaurant.fields.Foto?.[0]?.thumbnails?.large?.url
-                };
-            }
-            restaurantData[id].visits++;
-            restaurantData[id].totalSpend += record.fields.Kokku || 0;
-            const visitDate = new Date(record.fields.Kuupäev);
-            if (visitDate > restaurantData[id].lastVisit) {
-                restaurantData[id].lastVisit = visitDate;
-            }
-        });
+function processActivityData(records) {
+    return records.map(record => {
+        const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
+        return {
+            id: record.id,
+            name: record.fields.Toit,
+            restaurantName: restaurantDetails?.Nimetus || 'N/A',
+            city: restaurantDetails?.Linn || 'N/A',
+            country: restaurantDetails?.Riik || 'N/A',
+            spend: record.fields.Kokku || 0,
+            date: new Date(record.fields.Kuupäev),
+            coordinates: restaurantDetails?.Coordinates,
+            photoUrl: restaurantDetails?.Foto?.[0]?.thumbnails?.large?.url,
+            emoji: record.fields.Emoji
+        };
     });
-
-    Object.values(restaurantData).forEach(r => {
-        r.avgSpend = r.totalSpend / r.visits;
-    });
-
-    return Object.values(restaurantData);
 }
 
 
-function renderRestaurantList(restaurants) {
+function renderActivityList(activities) {
     const listElement = document.getElementById('restaurant-list');
     listElement.innerHTML = '';
 
-    restaurants.forEach(r => {
+    activities.forEach(a => {
         const item = document.createElement('div');
         item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4';
         item.innerHTML = `
-            <img src="${r.photoUrl || 'https://via.placeholder.com/150'}" alt="${r.name}" class="w-20 h-20 rounded-md object-cover">
+            <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
             <div>
-                <h3 class="text-lg font-bold text-white">${r.name}</h3>
-                <p class="text-sm text-gray-400">${r.cuisine}</p>
+                <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
+                <p class="text-sm text-gray-400">${a.restaurantName}</p>
                 <div class="flex gap-4 mt-2">
-                    <p class="text-sm text-gray-400">Avg. Spend: €${r.avgSpend.toFixed(2)}</p>
-                    <p class="text-sm text-gray-400">Visits: ${r.visits}</p>
+                    <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
+                    <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
                 </div>
             </div>
         `;
@@ -99,7 +77,7 @@ function renderRestaurantList(restaurants) {
     });
 }
 
-function initializeMap(token, restaurants) {
+function initializeMap(token, activities) {
     mapboxgl.accessToken = token;
     const map = new mapboxgl.Map({
         container: 'map',
@@ -110,13 +88,13 @@ function initializeMap(token, restaurants) {
 
     const bounds = new mapboxgl.LngLatBounds();
 
-    restaurants.forEach(r => {
-        if (r.coordinates) {
-            const [lat, lng] = r.coordinates.split(',').map(Number);
+    activities.forEach(a => {
+        if (a.coordinates) {
+            const [lat, lng] = a.coordinates.split(',').map(Number);
             if (isNaN(lat) || isNaN(lng)) return;
 
             const popup = new mapboxgl.Popup({ offset: 25 })
-                .setHTML(`<h3>${r.name}</h3><p>${r.cuisine}</p>`);
+                .setHTML(`<h3>${a.name}</h3><p>${a.restaurantName}</p><p>€${a.spend.toFixed(2)}</p>`);
 
             new mapboxgl.Marker()
                 .setLngLat([lng, lat])
@@ -132,32 +110,32 @@ function initializeMap(token, restaurants) {
     }
 }
 
-function setupEventListeners(restaurants) {
+function setupEventListeners(activities) {
     const searchInput = document.getElementById('search-input');
     const sortBy = document.getElementById('sort-by');
 
-    searchInput.addEventListener('input', () => {
+    function filterAndSort() {
         const searchTerm = searchInput.value.toLowerCase();
-        const filtered = restaurants.filter(r => 
-            r.name.toLowerCase().includes(searchTerm) ||
-            r.city.toLowerCase().includes(searchTerm) ||
-            r.country.toLowerCase().includes(searchTerm)
-        );
-        renderRestaurantList(filtered);
-    });
-
-    sortBy.addEventListener('change', () => {
         const sortValue = sortBy.value;
-        let sorted = [...restaurants];
+
+        let filtered = activities.filter(a => 
+            a.name.toLowerCase().includes(searchTerm) ||
+            a.restaurantName.toLowerCase().includes(searchTerm) ||
+            a.city.toLowerCase().includes(searchTerm) ||
+            a.country.toLowerCase().includes(searchTerm)
+        );
+
         if (sortValue === 'date') {
-            sorted.sort((a, b) => b.lastVisit - a.lastVisit);
-        } else if (sortValue === 'visits') {
-            sorted.sort((a, b) => b.visits - a.visits);
+            filtered.sort((a, b) => b.date - a.date);
         } else if (sortValue === 'avg-spend') {
-            sorted.sort((a, b) => b.avgSpend - a.avgSpend);
+            filtered.sort((a, b) => b.spend - a.spend);
         }
-        renderRestaurantList(sorted);
-    });
+
+        renderActivityList(filtered);
+    }
+
+    searchInput.addEventListener('input', filterAndSort);
+    sortBy.addEventListener('change', filterAndSort);
 }
 
 
