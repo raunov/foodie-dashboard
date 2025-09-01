@@ -111,7 +111,7 @@ function initializeMap(token, activities) {
 }
 
 function setupEventListeners(activities) {
-    const searchInput = document.getElementById('search-.input');
+    const searchInput = document.getElementById('search-input');
     const sortBy = document.getElementById('sort-by');
 
     function filterAndSort() {
