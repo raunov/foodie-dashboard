@@ -1,5 +1,5 @@
 let currentPage = 1;
-const itemsPerPage = 5;
+const itemsPerPage = 10;
 let allActivities = [];
 let currentActivities = [];
 
@@ -47,14 +47,14 @@ function processActivityData(records) {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
         return {
             id: record.id,
-            name: record.fields.Toit || 'N/A',
+            name: record.fields.Nimetus || 'N/A',
             restaurantName: restaurantDetails?.Nimetus || 'N/A',
             city: restaurantDetails?.Linn || 'N/A',
             country: restaurantDetails?.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
             date: new Date(record.fields.Kuupäev),
-            coordinates: restaurantDetails?.Coordinates,
-            photoUrl: restaurantDetails?.Foto?.[0]?.thumbnails?.large?.url,
+            coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
+            photoUrl: record.fields.Attachments?.[0]?.thumbnails?.large?.url,
             emoji: record.fields.Emoji || '🍽️'
         };
     });
