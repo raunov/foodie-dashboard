@@ -145,7 +145,7 @@ function initializeMap(token, activities) {
                     offset: 25,
                     className: 'foodie-popup'
                 })
-                .setHTML(`<h3>${a.name}</h3><p>${a.restaurantName}</p><p>€${a.spend.toFixed(2)}</p>`);
+                .setHTML(`<h3>${a.name}</h3><p>€${a.spend.toFixed(2)}</p>`);
 
             markers[a.id] = new mapboxgl.Marker(el)
                 .setLngLat([lng, lat])
