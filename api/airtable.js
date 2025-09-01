@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
   // 1. Fetch only "Restoran" activities from the "Tegevused" table using the specified view
   let tegevusedRecords = [];
   let offset = null;
-  const baseUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?view=${AIRTABLE_RESTAURANT_VIEW_ID}`;
+  const baseUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?view=viw3CX2MnNWumhk7p`;
 
   try {
     do {

@@ -41,7 +41,7 @@ function processActivityData(records) {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
         return {
             id: record.id,
-            name: record.fields.Toit,
+            name: record.fields.Toit || 'N/A',
             restaurantName: restaurantDetails?.Nimetus || 'N/A',
             city: restaurantDetails?.Linn || 'N/A',
             country: restaurantDetails?.Riik || 'N/A',
@@ -49,7 +49,7 @@ function processActivityData(records) {
             date: new Date(record.fields.Kuupäev),
             coordinates: restaurantDetails?.Coordinates,
             photoUrl: restaurantDetails?.Foto?.[0]?.thumbnails?.large?.url,
-            emoji: record.fields.Emoji
+            emoji: record.fields.Emoji || '🍽️'
         };
     });
 }
@@ -111,7 +111,7 @@ function initializeMap(token, activities) {
 }
 
 function setupEventListeners(activities) {
-    const searchInput = document.getElementById('search-input');
+    const searchInput = document.getElementById('search-.input');
     const sortBy = document.getElementById('sort-by');
 
     function filterAndSort() {
@@ -119,10 +119,10 @@ function setupEventListeners(activities) {
         const sortValue = sortBy.value;
 
         let filtered = activities.filter(a => 
-            a.name.toLowerCase().includes(searchTerm) ||
-            a.restaurantName.toLowerCase().includes(searchTerm) ||
-            a.city.toLowerCase().includes(searchTerm) ||
-            a.country.toLowerCase().includes(searchTerm)
+            (a.name || '').toLowerCase().includes(searchTerm) ||
+            (a.restaurantName || '').toLowerCase().includes(searchTerm) ||
+            (a.city || '').toLowerCase().includes(searchTerm) ||
+            (a.country || '').toLowerCase().includes(searchTerm)
         );
 
         if (sortValue === 'date') {
