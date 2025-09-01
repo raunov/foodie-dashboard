@@ -2,6 +2,8 @@ let currentPage = 1;
 const itemsPerPage = 10;
 let allActivities = [];
 let currentActivities = [];
+let map;
+const markers = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -30,9 +32,8 @@ async function initializePage() {
         allActivities = processActivityData(records);
         currentActivities = [...allActivities];
 
-        renderActivityList();
         initializeMap(tokenData.token, allActivities);
-
+        renderActivityList();
         setupEventListeners();
 
     } catch (error) {
@@ -48,14 +49,14 @@ function processActivityData(records) {
         return {
             id: record.id,
             name: record.fields.Nimetus || 'N/A',
-            restaurantName: restaurantDetails?.Nimetus || 'N/A',
+            restaurantName: restaurantDetails?.Nimetus,
             city: restaurantDetails?.Linn || 'N/A',
             country: restaurantDetails?.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
             date: new Date(record.fields.Kuupäev),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
             photoUrl: record.fields.Attachments?.[0]?.thumbnails?.large?.url,
-            emoji: record.fields.Emoji || '🍽️'
+            emoji: record.fields.Emoji || ''
         };
     });
 }
@@ -71,22 +72,28 @@ function renderActivityList() {
 
     paginatedActivities.forEach(a => {
         const item = document.createElement('div');
-        item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4';
+        item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 cursor-pointer hover:bg-gray-700';
         item.innerHTML = `
             <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
             <div>
                 <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
-                <p class="text-sm text-gray-400">${a.restaurantName}</p>
+                <p class="text-sm text-gray-400">${a.restaurantName && a.restaurantName !== a.name ? a.restaurantName : `${a.city}, ${a.country}`}</p>
                 <div class="flex gap-4 mt-2">
                     <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
                 </div>
             </div>
         `;
+        item.addEventListener('click', () => focusMapOnActivity(a.id));
         listElement.appendChild(item);
     });
 
     updatePaginationControls();
+
+    const firstActivityWithCoords = currentActivities.find(a => a.coordinates);
+    if (firstActivityWithCoords) {
+        focusMapOnActivity(firstActivityWithCoords.id);
+    }
 }
 
 function updatePaginationControls() {
@@ -104,7 +111,7 @@ function updatePaginationControls() {
 
 function initializeMap(token, activities) {
     mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({
+    map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/dark-v11',
         center: [24.7536, 59.4370],
@@ -118,10 +125,25 @@ function initializeMap(token, activities) {
             const [lat, lng] = a.coordinates.split(',').map(Number);
             if (isNaN(lat) || isNaN(lng)) return;
 
-            const popup = new mapboxgl.Popup({ offset: 25 })
+            let markerColor = '#10b981'; // Green for €
+            if (a.spend > 75) markerColor = '#ef4444'; // Red for €€€
+            else if (a.spend > 35) markerColor = '#f59e0b'; // Yellow for €€
+
+            const el = document.createElement('div');
+            el.className = 'marker';
+            el.style.backgroundColor = markerColor;
+            el.style.width = '20px';
+            el.style.height = '20px';
+            el.style.borderRadius = '50%';
+            el.style.border = '2px solid white';
+
+            const popup = new mapboxgl.Popup({ 
+                    offset: 25,
+                    className: 'foodie-popup'
+                })
                 .setHTML(`<h3>${a.name}</h3><p>${a.restaurantName}</p><p>€${a.spend.toFixed(2)}</p>`);
 
-            new mapboxgl.Marker()
+            markers[a.id] = new mapboxgl.Marker(el)
                 .setLngLat([lng, lat])
                 .setPopup(popup)
                 .addTo(map);
@@ -132,6 +154,17 @@ function initializeMap(token, activities) {
 
     if (!bounds.isEmpty()) {
         map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+    }
+}
+
+function focusMapOnActivity(activityId) {
+    const marker = markers[activityId];
+    if (marker) {
+        map.flyTo({
+            center: marker.getLngLat(),
+            zoom: 15
+        });
+        marker.togglePopup();
     }
 }
 
