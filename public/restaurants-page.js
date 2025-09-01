@@ -50,8 +50,8 @@ function processActivityData(records) {
             id: record.id,
             name: record.fields.Nimetus || 'N/A',
             restaurantName: restaurantDetails?.Nimetus,
-            city: restaurantDetails?.Linn || 'N/A',
-            country: restaurantDetails?.Riik || 'N/A',
+            city: record.fields.Linn || 'N/A',
+            country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
             date: new Date(record.fields.Kuupäev),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
@@ -77,7 +77,7 @@ function renderActivityList() {
             <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
             <div>
                 <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
-                <p class="text-sm text-gray-400">${a.restaurantName && a.restaurantName !== a.name ? a.restaurantName : `${a.city}, ${a.country}`}</p>
+                <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
                 <div class="flex gap-4 mt-2">
                     <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
