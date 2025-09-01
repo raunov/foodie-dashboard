@@ -118,6 +118,10 @@ function initializeMap(token, activities) {
         zoom: 1
     });
 
+    map.on('load', function() {
+        map.resize();
+    });
+
     const bounds = new mapboxgl.LngLatBounds();
 
     activities.forEach(a => {
