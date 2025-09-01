@@ -1,3 +1,8 @@
+let currentPage = 1;
+const itemsPerPage = 5;
+let allActivities = [];
+let currentActivities = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
 });
@@ -22,12 +27,13 @@ async function initializePage() {
         const airtableData = await airtableResponse.json();
 
         const records = airtableData.records || [];
-        const activities = processActivityData(records);
+        allActivities = processActivityData(records);
+        currentActivities = [...allActivities];
 
-        renderActivityList(activities);
-        initializeMap(tokenData.token, activities);
+        renderActivityList();
+        initializeMap(tokenData.token, allActivities);
 
-        setupEventListeners(activities);
+        setupEventListeners();
 
     } catch (error) {
         console.error('Failed to initialize page:', error);
@@ -55,11 +61,15 @@ function processActivityData(records) {
 }
 
 
-function renderActivityList(activities) {
+function renderActivityList() {
     const listElement = document.getElementById('restaurant-list');
     listElement.innerHTML = '';
 
-    activities.forEach(a => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedActivities = currentActivities.slice(startIndex, endIndex);
+
+    paginatedActivities.forEach(a => {
         const item = document.createElement('div');
         item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4';
         item.innerHTML = `
@@ -75,6 +85,21 @@ function renderActivityList(activities) {
         `;
         listElement.appendChild(item);
     });
+
+    updatePaginationControls();
+}
+
+function updatePaginationControls() {
+    const pageInfo = document.getElementById('page-info');
+    const prevButton = document.getElementById('prev-page');
+    const nextButton = document.getElementById('next-page');
+
+    const totalPages = Math.ceil(currentActivities.length / itemsPerPage);
+
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+
+    prevButton.disabled = currentPage === 1;
+    nextButton.disabled = currentPage === totalPages;
 }
 
 function initializeMap(token, activities) {
@@ -110,15 +135,17 @@ function initializeMap(token, activities) {
     }
 }
 
-function setupEventListeners(activities) {
+function setupEventListeners() {
     const searchInput = document.getElementById('search-input');
     const sortBy = document.getElementById('sort-by');
+    const prevButton = document.getElementById('prev-page');
+    const nextButton = document.getElementById('next-page');
 
     function filterAndSort() {
         const searchTerm = searchInput.value.toLowerCase();
         const sortValue = sortBy.value;
 
-        let filtered = activities.filter(a => 
+        let filtered = allActivities.filter(a => 
             (a.name || '').toLowerCase().includes(searchTerm) ||
             (a.restaurantName || '').toLowerCase().includes(searchTerm) ||
             (a.city || '').toLowerCase().includes(searchTerm) ||
@@ -131,11 +158,28 @@ function setupEventListeners(activities) {
             filtered.sort((a, b) => b.spend - a.spend);
         }
 
-        renderActivityList(filtered);
+        currentActivities = filtered;
+        currentPage = 1;
+        renderActivityList();
     }
 
     searchInput.addEventListener('input', filterAndSort);
     sortBy.addEventListener('change', filterAndSort);
+
+    prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderActivityList();
+        }
+    });
+
+    nextButton.addEventListener('click', () => {
+        const totalPages = Math.ceil(currentActivities.length / itemsPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderActivityList();
+        }
+    });
 }
 
 
