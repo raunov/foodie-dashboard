@@ -32,6 +32,7 @@ async function initializePage() {
 
         const records = airtableData.records || [];
         allActivities = processActivityData(records);
+        allActivities.sort((a, b) => b.date - a.date);
         currentActivities = [...allActivities];
 
         initializeMap(tokenData.token, allActivities);
@@ -56,6 +57,7 @@ function processActivityData(records) {
             country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
             date: new Date(record.fields.Kuupäev),
+            added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
             photoUrl: record.fields.Attachments?.[0]?.thumbnails?.large?.url,
             emoji: record.fields.Emoji || ''
@@ -193,6 +195,8 @@ function setupEventListeners() {
 
         if (sortValue === 'date') {
             filtered.sort((a, b) => b.date - a.date);
+        } else if (sortValue === 'added') {
+            filtered.sort((a, b) => b.added - a.added);
         } else if (sortValue === 'avg-spend') {
             filtered.sort((a, b) => b.spend - a.spend);
         }
