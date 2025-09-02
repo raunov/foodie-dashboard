@@ -6,6 +6,7 @@ let allActivities = [];
 let currentActivities = [];
 let map;
 const markers = {};
+
 // Timer used to debounce user input for smoother searching
 let debounceTimer;
 
@@ -180,12 +181,13 @@ function focusMapOnActivity(activityId) {
 
 function setupEventListeners() {
     const searchInput = document.getElementById('search-input');
+    const clearButton = document.getElementById('clear-search');
     const sortBy = document.getElementById('sort-by');
     const prevButton = document.getElementById('prev-page');
     const nextButton = document.getElementById('next-page');
 
     function filterAndSort() {
-        const searchTerm = searchInput.value.toLowerCase();
+        const searchTerm = searchInput.value.trim().toLowerCase();
         const sortValue = sortBy.value;
 
         let filtered = allActivities.filter(a => 
@@ -213,6 +215,13 @@ function setupEventListeners() {
         debounceTimer = setTimeout(filterAndSort, 300);
     });
     sortBy.addEventListener('change', filterAndSort);
+
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        currentActivities = [...allActivities];
+        currentPage = 1;
+        renderActivityList();
+    });
 
     prevButton.addEventListener('click', () => {
         if (currentPage > 1) {
