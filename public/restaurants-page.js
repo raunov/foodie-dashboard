@@ -6,6 +6,8 @@ let allActivities = [];
 let currentActivities = [];
 let map;
 const markers = {};
+
+// Timer used to debounce user input for smoother searching
 let debounceTimer;
 
 document.addEventListener('DOMContentLoaded', () => {
