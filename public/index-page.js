@@ -7,6 +7,7 @@ import {
     checkWeekendWarrior,
     checkFamilyFeast
 } from './utils/calculators.js';
+import { showLoader, hideLoader } from './utils/loader.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Only run this script on the main page by checking for a unique element
@@ -233,20 +234,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!bounds.isEmpty()) {
             map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
         }
-    }
-
-    function showLoader() {
-        const loader = document.getElementById('loader-container');
-        if(loader) loader.style.opacity = '1';
-        if(loader) loader.style.visibility = 'visible';
-    }
-
-    function hideLoader() {
-        const loader = document.getElementById('loader-container');
-        if(loader) loader.style.opacity = '0';
-        setTimeout(() => {
-            if(loader) loader.style.visibility = 'hidden';
-        }, 300);
     }
 
     initializeDashboard();
