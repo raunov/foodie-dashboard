@@ -178,6 +178,7 @@ function focusMapOnActivity(activityId) {
 
 function setupEventListeners() {
     const searchInput = document.getElementById('search-input');
+    const clearButton = document.getElementById('clear-search');
     const sortBy = document.getElementById('sort-by');
     const prevButton = document.getElementById('prev-page');
     const nextButton = document.getElementById('next-page');
@@ -208,6 +209,13 @@ function setupEventListeners() {
 
     searchInput.addEventListener('input', filterAndSort);
     sortBy.addEventListener('change', filterAndSort);
+
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        currentActivities = [...allActivities];
+        currentPage = 1;
+        renderActivityList();
+    });
 
     prevButton.addEventListener('click', () => {
         if (currentPage > 1) {
