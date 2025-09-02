@@ -6,6 +6,7 @@ let allActivities = [];
 let currentActivities = [];
 let map;
 const markers = {};
+let debounceTimer;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -184,7 +185,7 @@ function setupEventListeners() {
     const nextButton = document.getElementById('next-page');
 
     function filterAndSort() {
-        const searchTerm = searchInput.value.toLowerCase();
+        const searchTerm = searchInput.value.trim().toLowerCase();
         const sortValue = sortBy.value;
 
         let filtered = allActivities.filter(a => 
@@ -207,7 +208,10 @@ function setupEventListeners() {
         renderActivityList();
     }
 
-    searchInput.addEventListener('input', filterAndSort);
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(filterAndSort, 300);
+    });
     sortBy.addEventListener('change', filterAndSort);
 
     clearButton.addEventListener('click', () => {
