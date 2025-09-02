@@ -1,3 +1,5 @@
+import { showLoader, hideLoader } from './utils/loader.js';
+
 let currentPage = 1;
 const itemsPerPage = 10;
 let allActivities = [];
@@ -219,13 +221,3 @@ function setupEventListeners() {
     });
 }
 
-
-function showLoader() {
-    const loader = document.getElementById('loader-container');
-    if(loader) loader.style.display = 'flex';
-}
-
-function hideLoader() {
-    const loader = document.getElementById('loader-container');
-    if(loader) loader.style.display = 'none';
-}
