@@ -183,7 +183,7 @@ function setupEventListeners() {
     const nextButton = document.getElementById('next-page');
 
     function filterAndSort() {
-        const searchTerm = searchInput.value.toLowerCase();
+        const searchTerm = searchInput.value.trim().toLowerCase();
         const sortValue = sortBy.value;
 
         let filtered = allActivities.filter(a => 
