@@ -6,6 +6,7 @@ let allActivities = [];
 let currentActivities = [];
 let map;
 const markers = {};
+let debounceTimer;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -206,7 +207,10 @@ function setupEventListeners() {
         renderActivityList();
     }
 
-    searchInput.addEventListener('input', filterAndSort);
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(filterAndSort, 300);
+    });
     sortBy.addEventListener('change', filterAndSort);
 
     prevButton.addEventListener('click', () => {
