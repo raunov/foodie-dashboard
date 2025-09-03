@@ -57,8 +57,10 @@ module.exports = async (req, res) => {
           attachment: [
             {
               filename: filename || 'upload.jpg',
-              contentType,
-              bytes: base64
+              file: {
+                data: base64,
+                type: contentType
+              }
             }
           ]
         })
