@@ -1,9 +1,14 @@
+import { showLoader, hideLoader } from './utils/loader.js';
+
 let currentPage = 1;
 const itemsPerPage = 10;
 let allActivities = [];
 let currentActivities = [];
 let map;
 const markers = {};
+
+// Timer used to debounce user input for smoother searching
+let debounceTimer;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -30,6 +35,7 @@ async function initializePage() {
 
         const records = airtableData.records || [];
         allActivities = processActivityData(records);
+        allActivities.sort((a, b) => b.date - a.date);
         currentActivities = [...allActivities];
 
         initializeMap(tokenData.token, allActivities);
@@ -54,6 +60,7 @@ function processActivityData(records) {
             country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
             date: new Date(record.fields.Kuupäev),
+            added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
             photoUrl: record.fields.Attachments?.[0]?.thumbnails?.large?.url,
             emoji: record.fields.Emoji || ''
@@ -174,12 +181,13 @@ function focusMapOnActivity(activityId) {
 
 function setupEventListeners() {
     const searchInput = document.getElementById('search-input');
+    const clearButton = document.getElementById('clear-search');
     const sortBy = document.getElementById('sort-by');
     const prevButton = document.getElementById('prev-page');
     const nextButton = document.getElementById('next-page');
 
     function filterAndSort() {
-        const searchTerm = searchInput.value.toLowerCase();
+        const searchTerm = searchInput.value.trim().toLowerCase();
         const sortValue = sortBy.value;
 
         let filtered = allActivities.filter(a => 
@@ -191,6 +199,8 @@ function setupEventListeners() {
 
         if (sortValue === 'date') {
             filtered.sort((a, b) => b.date - a.date);
+        } else if (sortValue === 'added') {
+            filtered.sort((a, b) => b.added - a.added);
         } else if (sortValue === 'avg-spend') {
             filtered.sort((a, b) => b.spend - a.spend);
         }
@@ -200,8 +210,18 @@ function setupEventListeners() {
         renderActivityList();
     }
 
-    searchInput.addEventListener('input', filterAndSort);
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(filterAndSort, 300);
+    });
     sortBy.addEventListener('change', filterAndSort);
+
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        currentActivities = [...allActivities];
+        currentPage = 1;
+        renderActivityList();
+    });
 
     prevButton.addEventListener('click', () => {
         if (currentPage > 1) {
@@ -219,13 +239,3 @@ function setupEventListeners() {
     });
 }
 
-
-function showLoader() {
-    const loader = document.getElementById('loader-container');
-    if(loader) loader.style.display = 'flex';
-}
-
-function hideLoader() {
-    const loader = document.getElementById('loader-container');
-    if(loader) loader.style.display = 'none';
-}

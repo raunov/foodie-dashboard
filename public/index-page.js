@@ -7,6 +7,7 @@ import {
     checkWeekendWarrior,
     checkFamilyFeast
 } from './utils/calculators.js';
+import { showLoader, hideLoader } from './utils/loader.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Only run this script on the main page by checking for a unique element
@@ -140,11 +141,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     let map;
+    let heatmapMode = 'count';
+
+    function aggregateBills(bills) {
+        const locations = {};
+        bills.forEach(bill => {
+            if (!bill.coordinates) return;
+            const key = bill.coordinates;
+            const amount = bill.Kokku || 0;
+            if (!locations[key]) {
+                locations[key] = { sum: 0, count: 0, coords: key };
+            }
+            locations[key].sum += amount;
+            locations[key].count += 1;
+        });
+
+        const features = Object.values(locations).map(loc => {
+            const [lat, lng] = loc.coords.split(',').map(Number);
+            const avg = loc.count ? loc.sum / loc.count : 0;
+            return {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [lng, lat] },
+                properties: { avgPrice: avg, count: loc.count }
+            };
+        });
+
+        return { type: 'FeatureCollection', features };
+    }
+
+    function getHeatmapWeight(mode) {
+        if (mode === 'avgPrice') {
+            return ['interpolate', ['linear'], ['get', 'avgPrice'], 0, 0, 100, 1];
+        }
+        return ['interpolate', ['linear'], ['get', 'count'], 0, 0, 10, 1];
+    }
+
     function updateMap(bills) {
         if (!mapboxToken) {
             console.error('❌ Mapbox token not available. Cannot initialize map.');
             return;
         }
+
+        const geojson = aggregateBills(bills);
 
         if (!map) {
             mapboxgl.accessToken = mapboxToken;
@@ -168,85 +206,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     originalParent.appendChild(mapContainer);
                 }
-                
+
                 const icon = fullscreenBtn.querySelector('.material-symbols-outlined');
                 icon.textContent = isFullscreen ? 'fullscreen_exit' : 'fullscreen';
 
-                setTimeout(() => map.resize(), 10); 
+                setTimeout(() => map.resize(), 10);
             });
+
+            const heatmapSelect = document.getElementById('heatmap-type');
+            if (heatmapSelect) {
+                heatmapSelect.addEventListener('change', () => {
+                    heatmapMode = heatmapSelect.value === 'price' ? 'avgPrice' : 'count';
+                    if (map.getLayer('bills-heat')) {
+                        map.setPaintProperty('bills-heat', 'heatmap-weight', getHeatmapWeight(heatmapMode));
+                    }
+                });
+            }
+
+            map.on('load', () => {
+                map.addSource('bills', { type: 'geojson', data: geojson });
+                map.addLayer({
+                    id: 'bills-heat',
+                    type: 'heatmap',
+                    source: 'bills',
+                    maxzoom: 15,
+                    paint: {
+                        'heatmap-weight': getHeatmapWeight(heatmapMode),
+                        'heatmap-intensity': 1,
+                        'heatmap-color': [
+                            'interpolate', ['linear'], ['heatmap-density'],
+                            0, 'rgba(0, 0, 255, 0)',
+                            0.5, 'rgb(0, 255, 0)',
+                            1, 'rgb(255, 0, 0)'
+                        ],
+                        'heatmap-radius': 20,
+                        'heatmap-opacity': 0.8
+                    }
+                });
+                fitBounds();
+            });
+        } else {
+            if (map.isStyleLoaded() && map.getSource('bills')) {
+                map.getSource('bills').setData(geojson);
+                fitBounds();
+            }
         }
 
-        if (map.markers) {
-            map.markers.forEach(marker => marker.remove());
+        function fitBounds() {
+            const bounds = new mapboxgl.LngLatBounds();
+            geojson.features.forEach(f => bounds.extend(f.geometry.coordinates));
+            if (!bounds.isEmpty()) {
+                map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+            }
         }
-        map.markers = [];
-
-        const validBills = bills.filter(bill => bill.coordinates);
-        if (validBills.length === 0) return;
-
-        const bounds = new mapboxgl.LngLatBounds();
-
-        validBills.forEach(bill => {
-            const [lat, lng] = bill.coordinates.split(',').map(Number);
-            if (isNaN(lat) || isNaN(lng)) return;
-
-            const restaurantName = bill.Nimetus || 'Unknown Restaurant';
-            const dishName = bill.Toit || 'Dish';
-            const emoji = bill.Emoji || '🍽️';
-            const amount = bill.Kokku || 0;
-            const date = bill.Kuupäev ? new Date(bill.Kuupäev).toLocaleDateString('et-EE') : 'N/A';
-
-            let markerColor = '#10b981'; // Green for €
-            if (amount > 75) markerColor = '#ef4444'; // Red for €€€
-            else if (amount > 35) markerColor = '#f59e0b'; // Yellow for €€
-
-            const el = document.createElement('div');
-            el.className = 'marker';
-            el.style.backgroundColor = markerColor;
-            el.style.width = '20px';
-            el.style.height = '20px';
-            el.style.borderRadius = '50%';
-            el.style.border = '2px solid white';
-
-            const popupElement = document.createElement('div');
-            popupElement.innerHTML = `
-                <h3>${emoji} ${dishName}</h3>
-                <p><strong>${restaurantName}</strong></p>
-                <p>€${amount.toFixed(2)} on ${date}</p>
-            `;
-
-            const popup = new mapboxgl.Popup({ 
-                    offset: 25,
-                    className: 'foodie-popup'
-                })
-                .setDOMContent(popupElement);
-
-            const marker = new mapboxgl.Marker(el)
-                .setLngLat([lng, lat])
-                .setPopup(popup)
-                .addTo(map);
-            
-            map.markers.push(marker);
-            bounds.extend([lng, lat]);
-        });
-
-        if (!bounds.isEmpty()) {
-            map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
-        }
-    }
-
-    function showLoader() {
-        const loader = document.getElementById('loader-container');
-        if(loader) loader.style.opacity = '1';
-        if(loader) loader.style.visibility = 'visible';
-    }
-
-    function hideLoader() {
-        const loader = document.getElementById('loader-container');
-        if(loader) loader.style.opacity = '0';
-        setTimeout(() => {
-            if(loader) loader.style.visibility = 'hidden';
-        }, 300);
     }
 
     initializeDashboard();

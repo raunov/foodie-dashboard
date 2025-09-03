@@ -20,7 +20,7 @@
     </div>
 
     <div class="flex min-h-screen">
-        <aside class="w-64 bg-gray-900/50 p-6 flex-col justify-between hidden md:flex">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900/50 p-6 flex flex-col justify-between transform -translate-x-full transition-transform duration-300 md:relative md:translate-x-0" aria-hidden="true" tabindex="-1">
             <div>
                 <div class="flex items-center gap-3 mb-10">
                     <svg class="text-[var(--primary-color)]" fill="none" height="28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="28" xmlns="http://www.w3.org/2000/svg">
@@ -64,10 +64,11 @@
                 </a>
             </div>
         </aside>
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" tabindex="-1" aria-hidden="true"></div>
         <main class="flex-1 p-4 sm:p-8 overflow-y-auto">
             <header class="mb-8 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <div class="flex items-center gap-4">
-                    <button class="md:hidden text-white">
+                    <button id="menu-button" class="md:hidden text-white" aria-controls="sidebar" aria-expanded="false" aria-label="Open menu">
                         <span class="material-symbols-outlined">menu</span>
                     </button>
                     <div>
@@ -161,10 +162,12 @@
                         <h2 class="text-xl font-semibold text-white mb-4">Your Foodie Map</h2>
                         <div class="flex justify-between items-center mb-4">
                             <p class="text-sm text-[var(--text-secondary)]">Discover where your taste buds have taken you.</p>
-                            <div class="flex items-center gap-4 text-xs text-[var(--text-secondary)]">
-                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--primary-color)]"></span>€</div>
-                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-yellow)]"></span>€€</div>
-                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[var(--accent-red)]"></span>€€€</div>
+                            <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                                <label for="heatmap-type" class="mr-2">Show:</label>
+                                <select id="heatmap-type" class="bg-[var(--background-color)] border border-[var(--border-color)] rounded px-2 py-1 text-white">
+                                    <option value="count">Visits</option>
+                                    <option value="price">Avg Price</option>
+                                </select>
                             </div>
                         </div>
                         <div id="map-card-content">
@@ -191,6 +194,7 @@
             </div>
         </main>
     </div>
+    <script src="utils/menu.js" defer></script>
     <script src="index-page.js" type="module"></script>
     <script>
         document.getElementById('logout-button').addEventListener('click', async (event) => {
