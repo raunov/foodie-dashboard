@@ -10,6 +10,17 @@ const RESTORAN_TABLE_NAME = 'Restoran';
 
 // The exported function is the handler for the serverless function.
 module.exports = async (req, res) => {
+  // Basic CORS headers to support browser POST requests
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Immediately end preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }

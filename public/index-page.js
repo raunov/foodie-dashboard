@@ -50,11 +50,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const reader = new FileReader();
         reader.onload = async () => {
             try {
-                await fetch('/api/airtable', {
+                const response = await fetch('/api/airtable', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ dataUrl: reader.result, filename: file.name })
                 });
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.status}`);
+                }
             } catch (err) {
                 console.error('Image upload failed', err);
             }
