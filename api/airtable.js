@@ -19,6 +19,43 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Airtable credentials are not fully configured on the server.' });
   }
 
+  if (req.method === 'POST') {
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+    }
+    try {
+      const { dataUrl, filename } = JSON.parse(body || '{}');
+      const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}`;
+      const createResponse = await fetch(airtableUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          records: [
+            {
+              fields: {
+                Attachments: [{ url: dataUrl, filename: filename || 'upload.jpg' }]
+              }
+            }
+          ]
+        })
+      });
+      if (!createResponse.ok) {
+        const errText = await createResponse.text();
+        console.error('Airtable API error (create):', errText);
+        return res.status(createResponse.status).json({ error: 'Airtable API error (create)' });
+      }
+      const created = await createResponse.json();
+      return res.status(200).json(created);
+    } catch (err) {
+      console.error('Failed to create record with attachment', err);
+      return res.status(500).json({ error: 'Failed to create record with attachment' });
+    }
+  }
+
   // 1. Fetch only "Restoran" activities from the "Tegevused" table using the specified view
   let tegevusedRecords = [];
   let offset = null;

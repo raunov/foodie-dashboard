@@ -87,6 +87,13 @@
                     </button>
                 </div>
             </header>
+            <div id="image-upload" class="mb-8">
+                <div id="drop-zone" class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-600 rounded-lg text-center cursor-pointer hover:bg-gray-700/50">
+                    <span class="material-symbols-outlined text-4xl text-gray-400">cloud_upload</span>
+                    <p class="text-sm text-gray-400">Drag & drop an image, or click to select</p>
+                    <input type="file" id="image-input" accept="image/*" capture="environment" class="hidden" />
+                </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--primary-color)] transition-all duration-300 transform hover:-translate-y-1">
                     <div>

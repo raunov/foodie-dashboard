@@ -15,7 +15,52 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    setupImageUpload();
+
     let mapboxToken = '';
+
+    function setupImageUpload() {
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('image-input');
+        if (!dropZone || !fileInput) return;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.classList.add('bg-gray-700/50');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('bg-gray-700/50');
+        });
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-gray-700/50');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadImage(file);
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                uploadImage(fileInput.files[0]);
+            }
+        });
+    }
+
+    async function uploadImage(file) {
+        const reader = new FileReader();
+        reader.onload = async () => {
+            try {
+                await fetch('/api/airtable', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dataUrl: reader.result, filename: file.name })
+                });
+            } catch (err) {
+                console.error('Image upload failed', err);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
 
     async function initializeDashboard() {
         showLoader();
