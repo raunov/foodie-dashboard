@@ -37,6 +37,14 @@ module.exports = async (req, res) => {
     }
     try {
       const { dataUrl, filename } = JSON.parse(body || '{}');
+
+      // Expect a Data URL like "data:image/png;base64,AAA...". Split into
+      // metadata and the actual base64-encoded content so we can send it to
+      // Airtable using their direct-attach API.
+      const [meta, base64] = (dataUrl || '').split(',', 2);
+      const typeMatch = /data:(.*);base64/.exec(meta || '');
+      const contentType = typeMatch ? typeMatch[1] : 'image/jpeg';
+
       const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}`;
       const createResponse = await fetch(airtableUrl, {
         method: 'POST',
@@ -48,7 +56,13 @@ module.exports = async (req, res) => {
           records: [
             {
               fields: {
-                Attachments: [{ url: dataUrl, filename: filename || 'upload.jpg' }]
+                Attachments: [
+                  {
+                    filename: filename || 'upload.jpg',
+                    type: contentType,
+                    content: base64
+                  }
+                ]
               }
             }
           ]
