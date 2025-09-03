@@ -45,6 +45,36 @@ module.exports = async (req, res) => {
       const typeMatch = /data:(.*);base64/.exec(meta || '');
       const contentType = typeMatch ? typeMatch[1] : 'image/jpeg';
 
+      // First upload the file to Airtable's attachments endpoint
+      const attachmentUrl = `https://api.airtable.com/v0/bases/${AIRTABLE_BASE_ID}/attachments`;
+      const uploadResponse = await fetch(attachmentUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          attachment: [
+            {
+              filename: filename || 'upload.jpg',
+              contentType,
+              bytes: base64
+            }
+          ]
+        })
+      });
+      if (!uploadResponse.ok) {
+        const errText = await uploadResponse.text();
+        console.error('Airtable API error (upload):', errText);
+        return res.status(uploadResponse.status).json({ error: 'Airtable API error (upload)' });
+      }
+      const uploadJson = await uploadResponse.json();
+      const attachmentId = uploadJson.attachment && uploadJson.attachment[0] && uploadJson.attachment[0].id;
+      if (!attachmentId) {
+        return res.status(500).json({ error: 'No attachment ID returned from Airtable' });
+      }
+
+      // Then create a new record that links the uploaded attachment
       const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}`;
       const createResponse = await fetch(airtableUrl, {
         method: 'POST',
@@ -56,12 +86,8 @@ module.exports = async (req, res) => {
           records: [
             {
               fields: {
-                Attachments: [
-                  {
-                    filename: filename || 'upload.jpg',
-                    type: contentType,
-                    content: base64
-                  }
+                Attachment: [
+                  { id: attachmentId }
                 ]
               }
             }
