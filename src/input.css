@@ -132,10 +132,11 @@ body.body-no-scroll {
     line-height: 1.25rem;
 }
 
-.tooltip-container:hover .tooltip-text {
+.tooltip-container:hover .tooltip-text,
+.tooltip-container:focus .tooltip-text,
+.tooltip-container.active .tooltip-text {
     visibility: visible;
     opacity: 1;
-    position: relative;
 }
 
 .foodie-popup .mapboxgl-popup-content {
