@@ -85,10 +85,26 @@ function processAndRenderInsights(records) {
 
     insights.forEach(insight => {
         if (insight.type) { // It's a chart
-            insightsGrid.innerHTML += createInsightCard(insight.title, `<canvas id="${insight.chartId}"></canvas>`, true, insight.icon, insight.color, insight.colSpan);
+            insightsGrid.innerHTML += createInsightCard(
+                insight.title,
+                `<canvas id="${insight.chartId}"></canvas>`,
+                true,
+                insight.icon,
+                insight.color,
+                insight.colSpan,
+                insight.description
+            );
             chartInsights.push(insight);
         } else { // It's text
-            insightsGrid.innerHTML += createInsightCard(insight.title, insight.value, false, insight.icon, insight.color, insight.colSpan);
+            insightsGrid.innerHTML += createInsightCard(
+                insight.title,
+                insight.value,
+                false,
+                insight.icon,
+                insight.color,
+                insight.colSpan,
+                insight.description
+            );
         }
     });
 
