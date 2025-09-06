@@ -59,6 +59,7 @@ function processActivityData(records) {
             city: record.fields.Linn || 'N/A',
             country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
+            people: record.fields.People || null,
             date: new Date(record.fields.Kuupäev),
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
@@ -86,7 +87,7 @@ function renderActivityList() {
                 <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
                 <div class="flex gap-4 mt-2">
-                    <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
+                    <p class="text-sm text-gray-400">${a.people ? `Cost/person: €${(a.spend / a.people).toFixed(2)} 👤${a.people}` : `Kokku: €${a.spend.toFixed(2)}`}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
                 </div>
             </div>
@@ -152,7 +153,7 @@ function initializeMap(token, activities) {
                     offset: 25,
                     className: 'foodie-popup'
                 })
-                .setHTML(`<h3>${a.name}</h3><p>€${a.spend.toFixed(2)}</p>`);
+                .setHTML(`<h3>${a.name}</h3><p>${a.people ? `€${(a.spend / a.people).toFixed(2)} 👤${a.people}` : `€${a.spend.toFixed(2)}`}</p>`);
 
             markers[a.id] = new mapboxgl.Marker(el)
                 .setLngLat([lng, lat])
