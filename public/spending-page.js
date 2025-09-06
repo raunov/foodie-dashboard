@@ -85,12 +85,30 @@ function processAndRenderInsights(records) {
 
     insights.forEach(insight => {
         if (insight.type) { // It's a chart
-            insightsGrid.innerHTML += createInsightCard(insight.title, `<canvas id="${insight.chartId}"></canvas>`, true, insight.icon, insight.color, insight.colSpan);
+            insightsGrid.innerHTML += createInsightCard(
+                insight.title,
+                `<canvas id="${insight.chartId}"></canvas>`,
+                true,
+                insight.icon,
+                insight.color,
+                insight.colSpan,
+                insight.description
+            );
             chartInsights.push(insight);
         } else { // It's text
-            insightsGrid.innerHTML += createInsightCard(insight.title, insight.value, false, insight.icon, insight.color, insight.colSpan);
+            insightsGrid.innerHTML += createInsightCard(
+                insight.title,
+                insight.value,
+                false,
+                insight.icon,
+                insight.color,
+                insight.colSpan,
+                insight.description
+            );
         }
     });
+
+    initTooltips();
 
     // Render charts and animations after a short delay to ensure DOM is updated
     setTimeout(() => {
@@ -203,11 +221,11 @@ function createInsightCard(title, value, isChart = false, icon = 'info', color =
         ? value 
         : `<div class="text-3xl font-bold text-white mt-4 font-poppins" ${isNumeric ? `data-countup="${parseFloat(value)}"` : ''}>${isNumeric ? '0' : value}</div>`;
 
-    const tooltipHtml = description 
-        ? `<div class="tooltip-container">
+    const tooltipHtml = description
+        ? `<div class="tooltip-container" tabindex="0" role="button">
                <span class="material-symbols-outlined">info</span>
                <span class="tooltip-text">${description}</span>
-           </div>` 
+           </div>`
         : '';
 
     const card = `
@@ -234,6 +252,14 @@ function createAchievementBadge(name, description, unlocked = false, icon = 'mil
         </div>
     `;
     return badge;
+}
+
+function initTooltips() {
+    document.querySelectorAll('.tooltip-container').forEach(container => {
+        container.addEventListener('click', () => {
+            container.classList.toggle('active');
+        });
+    });
 }
 
 // --- Animation Helper ---
