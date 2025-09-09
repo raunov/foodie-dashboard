@@ -62,7 +62,7 @@ function processActivityData(records) {
             date: new Date(record.fields.Kuupäev),
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
-            photoUrl: record.fields.Attachments?.[0]?.thumbnails?.large?.url,
+            photoUrl: record.fields.Photos?.[0]?.thumbnails?.large?.url || record.fields.Attachments?.[0]?.thumbnails?.large?.url,
             emoji: record.fields.Emoji || ''
         };
     });
