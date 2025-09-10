@@ -87,33 +87,29 @@ function renderActivityList() {
 
     paginatedActivities.forEach(a => {
         const item = document.createElement('div');
-        item.className = 'bg-gray-800 p-4 rounded-lg flex gap-4 cursor-pointer hover:bg-gray-700';
+        item.className = 'bg-gray-800 p-4 rounded-lg flex flex-col gap-4';
 
-        const mainPhoto = a.photoUrls[0] || 'https://via.placeholder.com/150';
-        const otherPhotos = a.photoUrls.slice(1);
-
-        let otherPhotosHTML = '';
-        if (otherPhotos.length > 0) {
-            otherPhotosHTML = `<div class="flex gap-2 mt-2">` +
-                otherPhotos.map(photo => `<img src="${photo}" alt="thumbnail" class="w-10 h-10 rounded-md object-cover">`).join('') +
-                `</div>`;
-        }
+        const galleryHTML = a.photoUrls.length > 0
+            ? `<div class="flex overflow-x-auto gap-2 p-1">
+                ${a.photoUrls.map(photoUrl => `
+                    <img src="${photoUrl}" alt="${a.restaurantName}" class="w-24 h-24 rounded-md object-cover cursor-pointer flex-shrink-0 gallery-image">
+                `).join('')}
+            </div>`
+            : `<div class="w-24 h-24 rounded-md bg-gray-700 flex items-center justify-center text-gray-500">No Image</div>`;
 
         item.innerHTML = `
-            <div class="w-24">
-                <img src="${mainPhoto}" alt="${a.restaurantName}" class="w-24 h-24 rounded-md object-cover">
-                ${otherPhotosHTML}
-            </div>
-            <div class="flex-1">
-                <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
+            <div>
+                <h3 class="text-lg font-bold text-white cursor-pointer" data-activity-id="${a.id}">${a.emoji} ${a.name}</h3>
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
                 <div class="flex gap-4 mt-2">
                     <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
                 </div>
             </div>
+            ${galleryHTML}
         `;
-        item.addEventListener('click', () => focusMapOnActivity(a.id));
+
+        item.querySelector(`h3[data-activity-id="${a.id}"]`).addEventListener('click', () => focusMapOnActivity(a.id));
         listElement.appendChild(item);
     });
 
@@ -201,7 +197,39 @@ function focusMapOnActivity(activityId) {
     }
 }
 
+function initializeModal() {
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const closeButton = document.getElementById('modal-close');
+
+    const openModal = (imageUrl) => {
+        modalImage.src = imageUrl;
+        modal.classList.remove('hidden');
+    };
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        modalImage.src = '';
+    };
+
+    closeButton.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Add event delegation for gallery images
+    const restaurantList = document.getElementById('restaurant-list');
+    restaurantList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('gallery-image')) {
+            openModal(e.target.src);
+        }
+    });
+}
+
 function setupEventListeners() {
+    initializeModal();
     const searchInput = document.getElementById('search-input');
     const clearButton = document.getElementById('clear-search');
     const sortBy = document.getElementById('sort-by');
