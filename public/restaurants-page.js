@@ -62,7 +62,9 @@ function processActivityData(records) {
             date: new Date(record.fields.Kuupäev),
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
-            photoUrl: record.fields.Photos?.[0]?.thumbnails?.large?.url || record.fields.Attachments?.[0]?.thumbnails?.large?.url,
+            photoUrls: [...(record.fields.Photos || []), ...(record.fields.Attachments || [])]
+                .map(p => p.thumbnails?.large?.url)
+                .filter(Boolean),
             emoji: record.fields.Emoji || ''
         };
     });
@@ -81,7 +83,10 @@ function renderActivityList() {
         const item = document.createElement('div');
         item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 cursor-pointer hover:bg-gray-700';
         item.innerHTML = `
-            <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
+            <div class="relative">
+                <img src="${a.photoUrls[0] || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover cursor-pointer" data-index="0">
+                ${a.photoUrls.length > 1 ? `<span class=\"photo-counter absolute bottom-1 right-1 bg-black bg-opacity-75 text-xs text-white px-1 rounded\">1/${a.photoUrls.length}</span>` : ''}
+            </div>
             <div>
                 <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
@@ -93,6 +98,19 @@ function renderActivityList() {
         `;
         item.addEventListener('click', () => focusMapOnActivity(a.id));
         listElement.appendChild(item);
+
+        if (a.photoUrls.length > 1) {
+            const imgEl = item.querySelector('img');
+            const counterEl = item.querySelector('.photo-counter');
+            imgEl.addEventListener('click', e => {
+                e.stopPropagation();
+                const currentIndex = parseInt(imgEl.getAttribute('data-index'), 10);
+                const nextIndex = (currentIndex + 1) % a.photoUrls.length;
+                imgEl.src = a.photoUrls[nextIndex];
+                imgEl.setAttribute('data-index', nextIndex);
+                counterEl.textContent = `${nextIndex + 1}/${a.photoUrls.length}`;
+            });
+        }
     });
 
     updatePaginationControls();
