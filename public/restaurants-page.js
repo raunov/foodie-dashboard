@@ -52,6 +52,14 @@ async function initializePage() {
 function processActivityData(records) {
     return records.map(record => {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
+        const photos = record.fields.Photos || [];
+        const attachments = record.fields.Attachments || [];
+
+        const photoUrls = [
+            ...photos.map(p => p.thumbnails?.large?.url),
+            ...attachments.map(a => a.thumbnails?.large?.url)
+        ].filter(Boolean);
+
         return {
             id: record.id,
             name: record.fields.Nimetus || 'N/A',
@@ -62,7 +70,7 @@ function processActivityData(records) {
             date: new Date(record.fields.Kuupäev),
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
-            photoUrl: record.fields.Photos?.[0]?.thumbnails?.large?.url || record.fields.Attachments?.[0]?.thumbnails?.large?.url,
+            photoUrls: photoUrls,
             emoji: record.fields.Emoji || ''
         };
     });
@@ -79,10 +87,24 @@ function renderActivityList() {
 
     paginatedActivities.forEach(a => {
         const item = document.createElement('div');
-        item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 cursor-pointer hover:bg-gray-700';
+        item.className = 'bg-gray-800 p-4 rounded-lg flex gap-4 cursor-pointer hover:bg-gray-700';
+
+        const mainPhoto = a.photoUrls[0] || 'https://via.placeholder.com/150';
+        const otherPhotos = a.photoUrls.slice(1);
+
+        let otherPhotosHTML = '';
+        if (otherPhotos.length > 0) {
+            otherPhotosHTML = `<div class="flex gap-2 mt-2">` +
+                otherPhotos.map(photo => `<img src="${photo}" alt="thumbnail" class="w-10 h-10 rounded-md object-cover">`).join('') +
+                `</div>`;
+        }
+
         item.innerHTML = `
-            <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
-            <div>
+            <div class="w-24">
+                <img src="${mainPhoto}" alt="${a.restaurantName}" class="w-24 h-24 rounded-md object-cover">
+                ${otherPhotosHTML}
+            </div>
+            <div class="flex-1">
                 <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
                 <div class="flex gap-4 mt-2">
