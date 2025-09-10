@@ -52,6 +52,9 @@ async function initializePage() {
 function processActivityData(records) {
     return records.map(record => {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
+        const photos = record.fields.Photos || record.fields.Attachments || [];
+        const photoUrls = photos.map(p => p.thumbnails?.large?.url).filter(Boolean);
+
         return {
             id: record.id,
             name: record.fields.Nimetus || 'N/A',
@@ -62,7 +65,7 @@ function processActivityData(records) {
             date: new Date(record.fields.Kuupäev),
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
-            photoUrl: record.fields.Photos?.[0]?.thumbnails?.large?.url || record.fields.Attachments?.[0]?.thumbnails?.large?.url,
+            photoUrls: photoUrls,
             emoji: record.fields.Emoji || ''
         };
     });
@@ -79,18 +82,41 @@ function renderActivityList() {
 
     paginatedActivities.forEach(a => {
         const item = document.createElement('div');
-        item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 cursor-pointer hover:bg-gray-700';
-        item.innerHTML = `
-            <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
-            <div>
-                <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
-                <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
-                <div class="flex gap-4 mt-2">
-                    <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
-                    <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
-                </div>
+        item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 hover:bg-gray-700';
+
+        const photoContainer = document.createElement('div');
+        photoContainer.className = 'relative w-20 h-20';
+
+        const image = document.createElement('img');
+        image.src = a.photoUrls[0] || 'https://via.placeholder.com/150';
+        image.alt = a.restaurantName;
+        image.className = 'w-full h-full rounded-md object-cover';
+        photoContainer.appendChild(image);
+
+        if (a.photoUrls.length > 1) {
+            const photoCounter = document.createElement('div');
+            photoCounter.className = 'absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1.5 py-0.5 rounded';
+            photoCounter.textContent = `+${a.photoUrls.length - 1}`;
+            photoContainer.appendChild(photoCounter);
+        }
+
+        photoContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openPhotoGallery(a.photoUrls, 0);
+        });
+
+        const textInfo = document.createElement('div');
+        textInfo.innerHTML = `
+            <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
+            <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
+            <div class="flex gap-4 mt-2">
+                <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
+                <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
             </div>
         `;
+
+        item.appendChild(photoContainer);
+        item.appendChild(textInfo);
         item.addEventListener('click', () => focusMapOnActivity(a.id));
         listElement.appendChild(item);
     });
