@@ -67,6 +67,7 @@ function processActivityData(records) {
             city: record.fields.Linn || 'N/A',
             country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
+            peopleCount: Number(record.fields.People) || null,
             date: new Date(record.fields.Kuupäev),
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
@@ -97,12 +98,16 @@ function renderActivityList() {
             </div>`
             : `<div class="w-24 h-24 rounded-md bg-gray-700 flex items-center justify-center text-gray-500">No Image</div>`;
 
+        const spendLabel = a.peopleCount && a.peopleCount > 0
+            ? `Cost per person: €${(a.spend / a.peopleCount).toFixed(2)} 👤${a.peopleCount}`
+            : `Total spend: €${a.spend.toFixed(2)}`;
+
         item.innerHTML = `
             <div>
                 <h3 class="text-lg font-bold text-white cursor-pointer" data-activity-id="${a.id}">${a.emoji} ${a.name}</h3>
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
                 <div class="flex gap-4 mt-2">
-                    <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
+                    <p class="text-sm text-gray-400">${spendLabel}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
                 </div>
             </div>
@@ -166,11 +171,15 @@ function initializeMap(token, activities) {
             el.style.borderRadius = '50%';
             el.style.border = '2px solid white';
 
-            const popup = new mapboxgl.Popup({ 
+            const spendPopupLabel = a.peopleCount && a.peopleCount > 0
+                ? `€${(a.spend / a.peopleCount).toFixed(2)} per person 👤${a.peopleCount}`
+                : `€${a.spend.toFixed(2)}`;
+
+            const popup = new mapboxgl.Popup({
                     offset: 25,
                     className: 'foodie-popup'
                 })
-                .setHTML(`<h3>${a.name}</h3><p>€${a.spend.toFixed(2)}</p>`);
+                .setHTML(`<h3>${a.name}</h3><p>${spendPopupLabel}</p>`);
 
             markers[a.id] = new mapboxgl.Marker(el)
                 .setLngLat([lng, lat])
