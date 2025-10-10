@@ -56,6 +56,7 @@ function processActivityData(records) {
             id: record.id,
             name: record.fields.Nimetus || 'N/A',
             restaurantName: restaurantDetails?.Nimetus,
+            googleMapsUri: restaurantDetails?.GoogleMapsUri || restaurantDetails?.GoogleMapsURI || restaurantDetails?.GoogleMapsUrl || restaurantDetails?.GoogleMapsURL || null,
             city: record.fields.Linn || 'N/A',
             country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
@@ -84,6 +85,12 @@ function renderActivityList() {
             <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
             <div>
                 <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
+                ${a.restaurantName ? `
+                    <p class="text-sm text-gray-300 flex items-center gap-2">
+                        <span>${a.restaurantName}</span>
+                        ${a.googleMapsUri ? `<a href="${a.googleMapsUri}" class="text-emerald-400 hover:text-emerald-300 flex items-center" target="_blank" rel="noopener noreferrer" aria-label="Open ${a.restaurantName} in Google Maps"><span class="material-symbols-outlined text-base leading-none" aria-hidden="true">location_on</span></a>` : ''}
+                    </p>
+                ` : ''}
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
                 <div class="flex gap-4 mt-2">
                     <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
