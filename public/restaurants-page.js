@@ -105,7 +105,7 @@ function renderActivityList() {
 
         item.innerHTML = `
             <div>
-                <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
+                <h3 class="text-lg font-bold text-white cursor-pointer" data-activity-id="${a.id}">${a.emoji} ${a.name}</h3>
                 ${a.restaurantName ? `
                     <p class="text-sm text-gray-300 flex items-center gap-2">
                         <span>${a.restaurantName}</span>
@@ -121,7 +121,15 @@ function renderActivityList() {
             ${galleryHTML}
         `;
 
-        item.querySelector(`h3[data-activity-id="${a.id}"]`).addEventListener('click', () => focusMapOnActivity(a.id));
+        item.addEventListener('click', () => focusMapOnActivity(a.id));
+
+        const titleElement = item.querySelector(`h3[data-activity-id="${a.id}"]`);
+        if (titleElement) {
+            titleElement.addEventListener('click', (event) => {
+                event.stopPropagation();
+                focusMapOnActivity(a.id);
+            });
+        }
         listElement.appendChild(item);
     });
 
