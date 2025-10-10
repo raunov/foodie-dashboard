@@ -40,7 +40,7 @@
                         <span class="material-symbols-outlined">restaurant</span>
                         <span>Restaurants</span>
                     </a>
-                    <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="#">
+                    <a class="flex items-center gap-3 px-4 py-2 rounded-md text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors" href="dishes.html">
                         <span class="material-symbols-outlined">fastfood</span>
                         <span>Dishes</span>
                     </a>
@@ -101,6 +101,11 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <div id="image-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <span id="modal-close" class="absolute top-4 right-4 text-white text-3xl cursor-pointer">&times;</span>
+        <img id="modal-image" src="" alt="Full-size image" class="max-w-full max-h-full rounded-lg">
     </div>
 
     <script src="utils/menu.js" defer></script>

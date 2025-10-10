@@ -52,6 +52,14 @@ async function initializePage() {
 function processActivityData(records) {
     return records.map(record => {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
+        const photos = record.fields.Photos || [];
+        const attachments = record.fields.Attachments || [];
+
+        const photoUrls = [
+            ...photos.map(p => p.thumbnails?.large?.url),
+            ...attachments.map(a => a.thumbnails?.large?.url)
+        ].filter(Boolean);
+
         return {
             id: record.id,
             name: record.fields.Nimetus || 'N/A',
@@ -60,10 +68,11 @@ function processActivityData(records) {
             city: record.fields.Linn || 'N/A',
             country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
+            peopleCount: Number(record.fields.People) || null,
             date: new Date(record.fields.Kuupäev),
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
-            photoUrl: record.fields.Attachments?.[0]?.thumbnails?.large?.url,
+            photoUrls: photoUrls,
             emoji: record.fields.Emoji || ''
         };
     });
@@ -80,9 +89,21 @@ function renderActivityList() {
 
     paginatedActivities.forEach(a => {
         const item = document.createElement('div');
-        item.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 cursor-pointer hover:bg-gray-700';
+        item.className = 'bg-gray-800 p-4 rounded-lg flex flex-col gap-4';
+
+        const galleryHTML = a.photoUrls.length > 0
+            ? `<div class="flex overflow-x-auto gap-2 p-1">
+                ${a.photoUrls.map(photoUrl => `
+                    <img src="${photoUrl}" alt="${a.restaurantName}" class="w-24 h-24 rounded-md object-cover cursor-pointer flex-shrink-0 gallery-image">
+                `).join('')}
+            </div>`
+            : `<div class="w-24 h-24 rounded-md bg-gray-700 flex items-center justify-center text-gray-500">No Image</div>`;
+
+        const spendLabel = a.peopleCount && a.peopleCount > 0
+            ? `Cost per person: €${(a.spend / a.peopleCount).toFixed(2)} 👤${a.peopleCount}`
+            : `Total spend: €${a.spend.toFixed(2)}`;
+
         item.innerHTML = `
-            <img src="${a.photoUrl || 'https://via.placeholder.com/150'}" alt="${a.restaurantName}" class="w-20 h-20 rounded-md object-cover">
             <div>
                 <h3 class="text-lg font-bold text-white">${a.emoji} ${a.name}</h3>
                 ${a.restaurantName ? `
@@ -93,12 +114,14 @@ function renderActivityList() {
                 ` : ''}
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
                 <div class="flex gap-4 mt-2">
-                    <p class="text-sm text-gray-400">Spend: €${a.spend.toFixed(2)}</p>
+                    <p class="text-sm text-gray-400">${spendLabel}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
                 </div>
             </div>
+            ${galleryHTML}
         `;
-        item.addEventListener('click', () => focusMapOnActivity(a.id));
+
+        item.querySelector(`h3[data-activity-id="${a.id}"]`).addEventListener('click', () => focusMapOnActivity(a.id));
         listElement.appendChild(item);
     });
 
@@ -155,11 +178,15 @@ function initializeMap(token, activities) {
             el.style.borderRadius = '50%';
             el.style.border = '2px solid white';
 
-            const popup = new mapboxgl.Popup({ 
+            const spendPopupLabel = a.peopleCount && a.peopleCount > 0
+                ? `€${(a.spend / a.peopleCount).toFixed(2)} per person 👤${a.peopleCount}`
+                : `€${a.spend.toFixed(2)}`;
+
+            const popup = new mapboxgl.Popup({
                     offset: 25,
                     className: 'foodie-popup'
                 })
-                .setHTML(`<h3>${a.name}</h3><p>€${a.spend.toFixed(2)}</p>`);
+                .setHTML(`<h3>${a.name}</h3><p>${spendPopupLabel}</p>`);
 
             markers[a.id] = new mapboxgl.Marker(el)
                 .setLngLat([lng, lat])
@@ -186,7 +213,39 @@ function focusMapOnActivity(activityId) {
     }
 }
 
+function initializeModal() {
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const closeButton = document.getElementById('modal-close');
+
+    const openModal = (imageUrl) => {
+        modalImage.src = imageUrl;
+        modal.classList.remove('hidden');
+    };
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        modalImage.src = '';
+    };
+
+    closeButton.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Add event delegation for gallery images
+    const restaurantList = document.getElementById('restaurant-list');
+    restaurantList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('gallery-image')) {
+            openModal(e.target.src);
+        }
+    });
+}
+
 function setupEventListeners() {
+    initializeModal();
     const searchInput = document.getElementById('search-input');
     const clearButton = document.getElementById('clear-search');
     const sortBy = document.getElementById('sort-by');
