@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStats(bills);
         updateInsights(bills);
         updateAchievements(bills);
+        updateFavorites(bills);
         updateMap(bills);
     }
 
@@ -115,6 +116,348 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? (uniqueRestaurantCount === 1 ? 'One tasty stop so far.' : 'Keep discovering new favorites!')
                 : 'Add a bill to discover new favorites!';
         }
+    }
+
+    function updateFavorites(bills) {
+        const stats = calculateFavoriteStats(bills);
+
+        const favouriteTypeNode = document.getElementById('favourite-restaurant-type');
+        if (favouriteTypeNode) {
+            if (stats.topType) {
+                const visitLabel = stats.topType.count === 1 ? 'visit' : 'visits';
+                favouriteTypeNode.textContent = `${stats.topType.label} (${stats.topType.count} ${visitLabel})`;
+            } else {
+                favouriteTypeNode.textContent = 'Not enough data yet';
+            }
+        }
+
+        const priceBreakdownList = document.getElementById('price-level-breakdown');
+        if (priceBreakdownList) {
+            priceBreakdownList.innerHTML = '';
+
+            if (stats.priceBreakdown.length === 0) {
+                const emptyState = document.createElement('li');
+                emptyState.className = 'text-[var(--text-secondary)]';
+                emptyState.textContent = 'No price information yet.';
+                priceBreakdownList.appendChild(emptyState);
+            } else {
+                stats.priceBreakdown.forEach(entry => {
+                    const label = entry.label && entry.label !== entry.display
+                        ? `${entry.display} · ${entry.label}`
+                        : entry.display;
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center justify-between gap-4';
+                    li.innerHTML = `
+                        <span>${label}</span>
+                        <span class="text-xs text-[var(--text-secondary)]">${entry.count} (${entry.percentage.toFixed(0)}%)</span>
+                    `;
+                    priceBreakdownList.appendChild(li);
+                });
+            }
+        }
+
+        const topRestaurantsList = document.getElementById('top-restaurants-list');
+        if (topRestaurantsList) {
+            topRestaurantsList.innerHTML = '';
+
+            if (stats.topRestaurants.length === 0) {
+                const emptyState = document.createElement('li');
+                emptyState.className = 'text-[var(--text-secondary)]';
+                emptyState.textContent = 'Add more visits to see your favourites.';
+                topRestaurantsList.appendChild(emptyState);
+            } else {
+                stats.topRestaurants.forEach(restaurant => {
+                    const visitsLabel = restaurant.count === 1 ? 'visit' : 'visits';
+                    const metaParts = [];
+                    if (restaurant.primaryType) metaParts.push(restaurant.primaryType.label);
+                    if (restaurant.priceLevel) metaParts.push(restaurant.priceLevel.display);
+
+                    const statusClassMap = {
+                        CLOSED_PERMANENTLY: 'bg-rose-500/20 text-rose-300',
+                        CLOSED_TEMPORARILY: 'bg-amber-500/20 text-amber-300',
+                        OPERATIONAL: 'bg-emerald-500/20 text-emerald-300'
+                    };
+
+                    const statusHtml = restaurant.businessStatus
+                        ? `<span class="px-2 py-0.5 rounded-full text-[0.65rem] font-semibold ${statusClassMap[restaurant.businessStatus.raw] || 'bg-gray-800 text-[var(--text-secondary)]'}">${restaurant.businessStatus.label}</span>`
+                        : '';
+
+                    const li = document.createElement('li');
+                    li.className = 'bg-[var(--background-color)]/60 rounded-lg px-3 py-2 border border-transparent hover:border-[var(--border-color)] transition-colors';
+                    li.innerHTML = `
+                        <div class="flex items-center justify-between text-white font-semibold">
+                            <span>${restaurant.name}</span>
+                            <span class="text-sm text-[var(--accent-yellow)]">${restaurant.count} ${visitsLabel}</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)] mt-1">
+                            ${metaParts.length ? `<span>${metaParts.join(' • ')}</span>` : ''}
+                            ${statusHtml}
+                        </div>
+                    `;
+                    topRestaurantsList.appendChild(li);
+                });
+            }
+        }
+    }
+
+    function calculateFavoriteStats(bills) {
+        const typeCounts = new Map();
+        const priceLevelCounts = new Map();
+        const placeStats = new Map();
+
+        bills.forEach(bill => {
+            const place = extractPlaceDetails(bill);
+            if (!place) return;
+
+            if (place.primaryType) {
+                const key = place.primaryType.raw.toUpperCase();
+                const existing = typeCounts.get(key) || { count: 0, label: place.primaryType.label };
+                existing.count += 1;
+                if (!existing.label && place.primaryType.label) {
+                    existing.label = place.primaryType.label;
+                }
+                typeCounts.set(key, existing);
+            }
+
+            if (place.priceLevel) {
+                const key = place.priceLevel.level != null ? String(place.priceLevel.level) : place.priceLevel.display;
+                const existing = priceLevelCounts.get(key) || {
+                    count: 0,
+                    level: place.priceLevel.level,
+                    display: place.priceLevel.display,
+                    label: place.priceLevel.label
+                };
+                existing.count += 1;
+                if (!existing.display && place.priceLevel.display) {
+                    existing.display = place.priceLevel.display;
+                }
+                if (!existing.label && place.priceLevel.label) {
+                    existing.label = place.priceLevel.label;
+                }
+                priceLevelCounts.set(key, existing);
+            }
+
+            if (place.googlePlacesId) {
+                const existing = placeStats.get(place.googlePlacesId) || {
+                    id: place.googlePlacesId,
+                    name: place.name,
+                    count: 0,
+                    totalSpend: 0,
+                    priceLevel: place.priceLevel || null,
+                    primaryType: place.primaryType || null,
+                    businessStatus: place.businessStatus || null,
+                    businessStatusPriority: place.businessStatus ? businessStatusPriority(place.businessStatus.raw) : Infinity
+                };
+
+                existing.count += 1;
+                existing.totalSpend += Number(bill.Kokku) || 0;
+
+                if (!existing.name && place.name) existing.name = place.name;
+                if (!existing.priceLevel && place.priceLevel) existing.priceLevel = place.priceLevel;
+                if (!existing.primaryType && place.primaryType) existing.primaryType = place.primaryType;
+
+                const newStatusPriority = place.businessStatus ? businessStatusPriority(place.businessStatus.raw) : Infinity;
+                if (newStatusPriority < existing.businessStatusPriority) {
+                    existing.businessStatus = place.businessStatus;
+                    existing.businessStatusPriority = newStatusPriority;
+                } else if (!existing.businessStatus && place.businessStatus) {
+                    existing.businessStatus = place.businessStatus;
+                    existing.businessStatusPriority = newStatusPriority;
+                }
+
+                placeStats.set(place.googlePlacesId, existing);
+            }
+        });
+
+        const typeEntries = Array.from(typeCounts.values());
+        typeEntries.sort((a, b) => b.count - a.count);
+        const topType = typeEntries[0] || null;
+
+        const priceEntries = Array.from(priceLevelCounts.values());
+        priceEntries.sort((a, b) => {
+            const levelA = a.level != null ? a.level : Infinity;
+            const levelB = b.level != null ? b.level : Infinity;
+            if (levelA !== levelB) return levelA - levelB;
+            return b.count - a.count;
+        });
+        const totalPriceObservations = priceEntries.reduce((sum, entry) => sum + entry.count, 0);
+        const priceBreakdown = priceEntries.map(entry => ({
+            ...entry,
+            percentage: totalPriceObservations > 0 ? (entry.count / totalPriceObservations) * 100 : 0
+        }));
+
+        const topRestaurants = Array.from(placeStats.values())
+            .map(({ businessStatusPriority: _priority, ...rest }) => rest)
+            .sort((a, b) => {
+                if (b.count !== a.count) return b.count - a.count;
+                return b.totalSpend - a.totalSpend;
+            })
+            .slice(0, 3);
+
+        return { topType, priceBreakdown, topRestaurants };
+    }
+
+    function businessStatusPriority(rawStatus) {
+        const priorities = {
+            CLOSED_PERMANENTLY: 0,
+            CLOSED_TEMPORARILY: 1,
+            OPERATIONAL: 2
+        };
+        return rawStatus && rawStatus in priorities ? priorities[rawStatus] : Infinity;
+    }
+
+    function extractPlaceDetails(bill) {
+        if (!bill) return null;
+
+        const detailFields = Array.isArray(bill.ToidudDetails)
+            ? bill.ToidudDetails
+                .map(detail => detail?.fields || null)
+                .find(fields => {
+                    const placeId = getTrimmedStringField(fields, ['GooglePlacesId']);
+                    return typeof placeId === 'string' && placeId;
+                }) || null
+            : null;
+
+        const sources = [detailFields, bill].filter(Boolean);
+
+        const googlePlacesId = sources
+            .map(src => getTrimmedStringField(src, ['GooglePlacesId']))
+            .find(Boolean);
+
+        if (!googlePlacesId) {
+            return null;
+        }
+
+        const name = sources
+            .map(src => getTrimmedStringField(src, ['GooglePlaceName', 'Nimetus', 'Name']))
+            .find(Boolean) || 'Unknown spot';
+
+        const primaryTypeRaw = sources
+            .map(src => getTrimmedStringField(src, ['primaryType', 'PrimaryType']))
+            .find(value => value != null);
+        const primaryType = formatPrimaryType(primaryTypeRaw);
+
+        const priceLevelRaw = sources
+            .map(src => getFieldCaseInsensitive(src, ['priceLevel']))
+            .find(value => value !== undefined && value !== null && value !== '');
+        const priceLevel = normalizePriceLevel(priceLevelRaw);
+
+        const businessStatusRaw = sources
+            .map(src => getTrimmedStringField(src, ['businessStatus', 'businesStatus']))
+            .find(value => value != null);
+        const businessStatus = formatBusinessStatus(businessStatusRaw);
+
+        return {
+            googlePlacesId,
+            name,
+            primaryType,
+            priceLevel,
+            businessStatus
+        };
+    }
+
+    function getFieldCaseInsensitive(source, fieldNames) {
+        if (!source) return undefined;
+        const lookup = fieldNames.map(name => name.toLowerCase());
+        for (const [key, value] of Object.entries(source)) {
+            if (lookup.includes(key.toLowerCase())) {
+                return value;
+            }
+        }
+        return undefined;
+    }
+
+    function getTrimmedStringField(source, fieldNames) {
+        const value = getFieldCaseInsensitive(source, fieldNames);
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return trimmed || null;
+        }
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return String(value);
+        }
+        return null;
+    }
+
+    function formatPrimaryType(type) {
+        if (!type) return null;
+        const raw = type.toString().trim();
+        if (!raw) return null;
+        const label = raw
+            .replace(/[_-]+/g, ' ')
+            .toLowerCase()
+            .replace(/\b\w/g, char => char.toUpperCase());
+        return { raw, label };
+    }
+
+    function formatBusinessStatus(status) {
+        if (!status) return null;
+        const raw = status.toString().trim();
+        if (!raw) return null;
+        const normalized = raw.toUpperCase().replace(/\s+/g, '_');
+        const label = normalized
+            .toLowerCase()
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, char => char.toUpperCase());
+        return { raw: normalized, label };
+    }
+
+    function normalizePriceLevel(priceLevel) {
+        if (priceLevel == null) return null;
+
+        const coerceLevel = (level) => {
+            if (!Number.isFinite(level)) return null;
+            const rounded = Math.round(level);
+            if (rounded <= 0) {
+                return { level: 0, display: 'Free', label: 'Free' };
+            }
+            if (rounded >= 1 && rounded <= 4) {
+                const labels = {
+                    1: 'Inexpensive',
+                    2: 'Moderate',
+                    3: 'Expensive',
+                    4: 'Splurge'
+                };
+                return { level: rounded, display: '€'.repeat(rounded), label: labels[rounded] || '€'.repeat(rounded) };
+            }
+            return null;
+        };
+
+        if (typeof priceLevel === 'number') {
+            const numeric = coerceLevel(priceLevel);
+            if (numeric) return numeric;
+        }
+
+        const normalizedOriginal = priceLevel.toString().trim();
+        if (!normalizedOriginal) return null;
+
+        const numericValue = Number(normalizedOriginal);
+        if (!Number.isNaN(numericValue)) {
+            const numeric = coerceLevel(numericValue);
+            if (numeric) return numeric;
+        }
+
+        if (/^[€$]+$/.test(normalizedOriginal)) {
+            const level = normalizedOriginal.length;
+            const coerced = coerceLevel(level);
+            if (coerced) return coerced;
+        }
+
+        const normalizedKey = normalizedOriginal.replace(/[-\s]+/g, '_').toUpperCase();
+        const enumMap = {
+            PRICE_LEVEL_FREE: 0,
+            PRICE_LEVEL_INEXPENSIVE: 1,
+            PRICE_LEVEL_MODERATE: 2,
+            PRICE_LEVEL_EXPENSIVE: 3,
+            PRICE_LEVEL_VERY_EXPENSIVE: 4
+        };
+
+        if (normalizedKey in enumMap) {
+            const coerced = coerceLevel(enumMap[normalizedKey]);
+            if (coerced) return coerced;
+        }
+
+        return null;
     }
 
     function updateInsights(bills) {
