@@ -82,21 +82,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const identifiers = new Set();
         bills.forEach(bill => {
-            const detailPlaceId = bill?.ToidudDetails?.[0]?.fields?.GooglePlaceId;
-            const directPlaceId = bill?.GooglePlaceId;
-            const restaurantName = bill?.Restoran || bill?.Restaurant || bill?.RestaurantName;
+            const detailIdentifiers = Array.isArray(bill?.ToidudDetails)
+                ? bill.ToidudDetails
+                    .map(detail => detail?.fields)
+                    .filter(Boolean)
+                    .flatMap(fields => [
+                        fields.GooglePlaceId,
+                        fields.GooglePlaceID,
+                        fields.GooglePlaceName,
+                        fields.Nimetus,
+                        fields.Name,
+                        fields.Restoran,
+                    ])
+                    .filter(Boolean)
+                : [];
 
-            const identifier = detailPlaceId || directPlaceId || restaurantName;
-            if (!identifier) {
-                return;
-            }
+            const billLevelIdentifiers = [
+                bill?.ToidudDetails?.[0]?.fields?.GooglePlaceId,
+                bill?.ToidudDetails?.[0]?.fields?.GooglePlaceID,
+                bill?.GooglePlaceId,
+                bill?.GooglePlaceID,
+                bill?.GooglePlaceName,
+                bill?.Restoran,
+                bill?.Restaurant,
+                bill?.RestaurantName,
+                bill?.Nimetus,
+                bill?.Name,
+            ].filter(Boolean);
 
-            const normalized = typeof identifier === 'string'
-                ? identifier.trim().toLowerCase()
-                : String(identifier).toLowerCase();
-            if (normalized) {
-                identifiers.add(normalized);
-            }
+            [...detailIdentifiers, ...billLevelIdentifiers].forEach(identifier => {
+                const normalized = typeof identifier === 'string'
+                    ? identifier.trim().toLowerCase()
+                    : String(identifier).toLowerCase();
+
+                if (normalized) {
+                    identifiers.add(normalized);
+                }
+            });
         });
 
         const uniqueRestaurantCount = identifiers.size;
@@ -104,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const uniqueRestaurantMessageNode = document.getElementById('unique-restaurants-message');
 
         if (uniqueRestaurantNode) {
-            uniqueRestaurantNode.textContent = uniqueRestaurantCount;
+            uniqueRestaurantNode.textContent = uniqueRestaurantCount.toLocaleString('et-EE');
         }
 
         if (uniqueRestaurantMessageNode) {
