@@ -79,6 +79,42 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-spent').textContent = `€${totalSpent.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('average-bill').textContent = `€${averageBill.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('bills-tracked').textContent = billsTracked;
+
+        const uniquePlaceIds = new Set();
+        let missingPlaceIdCount = 0;
+
+        bills.forEach(bill => {
+            const detailPlaceId = Array.isArray(bill?.ToidudDetails)
+                ? bill.ToidudDetails
+                    .map(detail => detail?.fields?.GooglePlacesId)
+                    .find(id => typeof id === 'string' && id.trim())
+                : undefined;
+
+            const normalizedDetailPlaceId = typeof detailPlaceId === 'string' ? detailPlaceId.trim() : undefined;
+            const billLevelPlaceId = typeof bill?.GooglePlacesId === 'string' ? bill.GooglePlacesId.trim() : undefined;
+
+            const placeId = normalizedDetailPlaceId || billLevelPlaceId;
+
+            if (placeId) {
+                uniquePlaceIds.add(placeId.trim());
+            } else {
+                missingPlaceIdCount += 1;
+            }
+        });
+
+        const uniqueRestaurantCount = uniquePlaceIds.size + missingPlaceIdCount;
+        const uniqueRestaurantNode = document.getElementById('unique-restaurants');
+        const uniqueRestaurantMessageNode = document.getElementById('unique-restaurants-message');
+
+        if (uniqueRestaurantNode) {
+            uniqueRestaurantNode.textContent = uniqueRestaurantCount.toLocaleString('et-EE');
+        }
+
+        if (uniqueRestaurantMessageNode) {
+            uniqueRestaurantMessageNode.textContent = uniqueRestaurantCount > 0
+                ? (uniqueRestaurantCount === 1 ? 'One tasty stop so far.' : 'Keep discovering new favorites!')
+                : 'Add a bill to discover new favorites!';
+        }
     }
 
     function updateInsights(bills) {
