@@ -80,48 +80,32 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('average-bill').textContent = `€${averageBill.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('bills-tracked').textContent = billsTracked;
 
-        const identifiers = new Set();
+        const uniquePlaceIds = new Set();
+        let missingPlaceIdCount = 0;
+
         bills.forEach(bill => {
-            const detailIdentifiers = Array.isArray(bill?.ToidudDetails)
+            const detailPlaceId = Array.isArray(bill?.ToidudDetails)
                 ? bill.ToidudDetails
-                    .map(detail => detail?.fields)
-                    .filter(Boolean)
-                    .flatMap(fields => [
-                        fields.GooglePlaceId,
-                        fields.GooglePlaceID,
-                        fields.GooglePlaceName,
-                        fields.Nimetus,
-                        fields.Name,
-                        fields.Restoran,
-                    ])
-                    .filter(Boolean)
-                : [];
+                    .map(detail => detail?.fields?.GooglePlaceId || detail?.fields?.GooglePlaceID)
+                    .find(Boolean)
+                : undefined;
 
-            const billLevelIdentifiers = [
-                bill?.ToidudDetails?.[0]?.fields?.GooglePlaceId,
-                bill?.ToidudDetails?.[0]?.fields?.GooglePlaceID,
-                bill?.GooglePlaceId,
-                bill?.GooglePlaceID,
-                bill?.GooglePlaceName,
-                bill?.Restoran,
-                bill?.Restaurant,
-                bill?.RestaurantName,
-                bill?.Nimetus,
-                bill?.Name,
-            ].filter(Boolean);
+            const billLevelPlaceId = bill?.GooglePlaceId || bill?.GooglePlaceID;
 
-            [...detailIdentifiers, ...billLevelIdentifiers].forEach(identifier => {
-                const normalized = typeof identifier === 'string'
-                    ? identifier.trim().toLowerCase()
-                    : String(identifier).toLowerCase();
+            const placeId = typeof detailPlaceId === 'string' && detailPlaceId.trim()
+                ? detailPlaceId.trim()
+                : typeof billLevelPlaceId === 'string' && billLevelPlaceId.trim()
+                    ? billLevelPlaceId.trim()
+                    : detailPlaceId || billLevelPlaceId;
 
-                if (normalized) {
-                    identifiers.add(normalized);
-                }
-            });
+            if (placeId) {
+                uniquePlaceIds.add(String(placeId).trim());
+            } else {
+                missingPlaceIdCount += 1;
+            }
         });
 
-        const uniqueRestaurantCount = identifiers.size;
+        const uniqueRestaurantCount = uniquePlaceIds.size + missingPlaceIdCount;
         const uniqueRestaurantNode = document.getElementById('unique-restaurants');
         const uniqueRestaurantMessageNode = document.getElementById('unique-restaurants-message');
 
