@@ -49,6 +49,24 @@ async function initializePage() {
     }
 }
 
+function getTrimmedStringField(source, fieldNames) {
+    if (!source) return null;
+
+    for (const fieldName of fieldNames) {
+        const targetName = fieldName.toLowerCase();
+        for (const [key, value] of Object.entries(source)) {
+            if (key.toLowerCase() === targetName && typeof value === 'string') {
+                const trimmedValue = value.trim();
+                if (trimmedValue) {
+                    return trimmedValue;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
 function processActivityData(records) {
     return records.map(record => {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
@@ -60,11 +78,15 @@ function processActivityData(records) {
             ...attachments.map(a => a.thumbnails?.large?.url)
         ].filter(Boolean);
 
+        const googleMapsUri =
+            getTrimmedStringField(restaurantDetails, ['googleMapsUri', 'googleMapsUrl']) ||
+            getTrimmedStringField(record.fields, ['googleMapsUri', 'googleMapsUrl']);
+
         return {
             id: record.id,
             name: record.fields.Nimetus || 'N/A',
             restaurantName: restaurantDetails?.Nimetus,
-            googleMapsUri: restaurantDetails?.GoogleMapsUri || restaurantDetails?.GoogleMapsURI || restaurantDetails?.GoogleMapsUrl || restaurantDetails?.GoogleMapsURL || null,
+            googleMapsUri,
             city: record.fields.Linn || 'N/A',
             country: record.fields.Riik || 'N/A',
             spend: record.fields.Kokku || 0,
@@ -109,7 +131,7 @@ function renderActivityList() {
                 ${a.restaurantName ? `
                     <p class="text-sm text-gray-300 flex items-center gap-2">
                         <span>${a.restaurantName}</span>
-                        ${a.googleMapsUri ? `<a href="${a.googleMapsUri}" class="text-emerald-400 hover:text-emerald-300 flex items-center" target="_blank" rel="noopener noreferrer" aria-label="Open ${a.restaurantName} in Google Maps"><span class="material-symbols-outlined text-base leading-none" aria-hidden="true">location_on</span></a>` : ''}
+                        ${a.googleMapsUri ? `<a href="${a.googleMapsUri}" class="text-emerald-400 hover:text-emerald-300 flex items-center text-lg leading-none" target="_blank" rel="noopener noreferrer" aria-label="Open ${a.restaurantName} in Google Maps">📍<span class="sr-only">Open in Google Maps</span></a>` : ''}
                     </p>
                 ` : ''}
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
