@@ -86,20 +86,17 @@ document.addEventListener('DOMContentLoaded', function() {
         bills.forEach(bill => {
             const detailPlaceId = Array.isArray(bill?.ToidudDetails)
                 ? bill.ToidudDetails
-                    .map(detail => detail?.fields?.GooglePlaceId || detail?.fields?.GooglePlaceID)
-                    .find(Boolean)
+                    .map(detail => detail?.fields?.GooglePlacesId)
+                    .find(id => typeof id === 'string' && id.trim())
                 : undefined;
 
-            const billLevelPlaceId = bill?.GooglePlaceId || bill?.GooglePlaceID;
+            const normalizedDetailPlaceId = typeof detailPlaceId === 'string' ? detailPlaceId.trim() : undefined;
+            const billLevelPlaceId = typeof bill?.GooglePlacesId === 'string' ? bill.GooglePlacesId.trim() : undefined;
 
-            const placeId = typeof detailPlaceId === 'string' && detailPlaceId.trim()
-                ? detailPlaceId.trim()
-                : typeof billLevelPlaceId === 'string' && billLevelPlaceId.trim()
-                    ? billLevelPlaceId.trim()
-                    : detailPlaceId || billLevelPlaceId;
+            const placeId = normalizedDetailPlaceId || billLevelPlaceId;
 
             if (placeId) {
-                uniquePlaceIds.add(String(placeId).trim());
+                uniquePlaceIds.add(placeId.trim());
             } else {
                 missingPlaceIdCount += 1;
             }
