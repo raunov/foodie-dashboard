@@ -67,6 +67,72 @@ function getTrimmedStringField(source, fieldNames) {
     return null;
 }
 
+function getNumericField(source, fieldNames) {
+    if (!source) return null;
+
+    for (const fieldName of fieldNames) {
+        const targetName = fieldName.toLowerCase();
+        for (const [key, value] of Object.entries(source)) {
+            if (key.toLowerCase() === targetName) {
+                const numericValue = Number(value);
+                if (!Number.isNaN(numericValue)) {
+                    return numericValue;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function formatPriceLevel(priceLevel) {
+    if (priceLevel == null) return null;
+
+    const coerceLevel = level => {
+        if (!Number.isFinite(level)) return null;
+        const rounded = Math.round(level);
+        if (rounded === 0) {
+            return { display: 'Free', level: 0 };
+        }
+        if (rounded >= 1 && rounded <= 4) {
+            return { display: '€'.repeat(rounded), level: rounded };
+        }
+        return null;
+    };
+
+    if (typeof priceLevel === 'number') {
+        const numericResult = coerceLevel(priceLevel);
+        if (numericResult) return numericResult;
+    }
+
+    const normalizedOriginal = priceLevel.toString().trim();
+    if (!normalizedOriginal) return null;
+
+    const numericValue = Number(normalizedOriginal);
+    const numericResult = coerceLevel(numericValue);
+    if (numericResult) return numericResult;
+
+    const normalizedKey = normalizedOriginal
+        .replace(/[-\s]+/g, '_')
+        .toUpperCase();
+
+    const enumLevels = {
+        PRICE_LEVEL_FREE: 0,
+        PRICE_LEVEL_INEXPENSIVE: 1,
+        PRICE_LEVEL_MODERATE: 2,
+        PRICE_LEVEL_EXPENSIVE: 3,
+        PRICE_LEVEL_VERY_EXPENSIVE: 4,
+        FREE: 0,
+        INEXPENSIVE: 1,
+        MODERATE: 2,
+        EXPENSIVE: 3,
+        VERY_EXPENSIVE: 4
+    };
+
+    const mappedLevel = enumLevels[normalizedKey];
+    return mappedLevel == null ? null : coerceLevel(mappedLevel);
+}
+
 function processActivityData(records) {
     return records.map(record => {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
@@ -88,6 +154,17 @@ function processActivityData(records) {
             record.fields.Nimetus ||
             'N/A';
 
+        const ratingRaw =
+            getNumericField(restaurantDetails, ['GooglePlacesRating']) ??
+            getNumericField(record.fields, ['GooglePlacesRating']);
+        const rating = Number.isFinite(ratingRaw) && ratingRaw >= 0 && ratingRaw <= 5 ? ratingRaw : null;
+
+        const priceLevelRaw =
+            getTrimmedStringField(restaurantDetails, ['priceLevel']) ||
+            getTrimmedStringField(record.fields, ['priceLevel']);
+
+        const priceLevel = formatPriceLevel(priceLevelRaw);
+
         return {
             id: record.id,
             name: displayName,
@@ -101,7 +178,9 @@ function processActivityData(records) {
             added: new Date(record.createdTime),
             coordinates: record.fields.coordinates || (record.fields.lat_exif && record.fields.lon_exif ? `${record.fields.lat_exif},${record.fields.lon_exif}` : null),
             photoUrls: photoUrls,
-            emoji: record.fields.Emoji || ''
+            emoji: record.fields.Emoji || '',
+            rating: rating,
+            priceLevel
         };
     });
 }
@@ -136,6 +215,16 @@ function renderActivityList() {
             ? `<a href="${a.googleMapsUri}" class="text-emerald-400 hover:text-emerald-300 flex items-center text-lg leading-none" target="_blank" rel="noopener noreferrer" aria-label="Open ${locationLabel} in Google Maps">📍<span class="sr-only">Open in Google Maps</span></a>`
             : '';
 
+        const ratingHtml = Number.isFinite(a.rating)
+            ? `<span class="flex items-center gap-1 text-sm text-yellow-300" aria-label="Rating ${a.rating.toFixed(1)} out of 5">⭐ ${a.rating.toFixed(1)}</span>`
+            : '';
+
+        const priceLevelHtml = a.priceLevel
+            ? `<span class="text-sm text-emerald-300" aria-label="Price level ${a.priceLevel.level} out of 4">${a.priceLevel.display}</span>`
+            : '';
+
+        const hasMetaRow = Boolean(ratingHtml || priceLevelHtml);
+
         item.innerHTML = `
             <div class="flex flex-col gap-1">
                 <div class="flex items-center gap-2">
@@ -146,6 +235,12 @@ function renderActivityList() {
                     <p class="text-sm text-gray-300">${a.restaurantName}</p>
                 ` : ''}
                 <p class="text-sm text-gray-400">${a.city}, ${a.country}</p>
+                ${hasMetaRow ? `
+                    <div class="flex flex-wrap items-center gap-3 mt-1">
+                        ${ratingHtml}
+                        ${priceLevelHtml}
+                    </div>
+                ` : ''}
                 <div class="flex gap-4 mt-2">
                     <p class="text-sm text-gray-400">${spendLabel}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
