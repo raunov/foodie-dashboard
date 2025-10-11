@@ -81,6 +81,106 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('bills-tracked').textContent = billsTracked;
     }
 
+    function findBusinessStatusValue(source) {
+        if (!source || typeof source !== 'object') {
+            return null;
+        }
+
+        for (const [key, value] of Object.entries(source)) {
+            if (value == null) continue;
+            const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
+            if (normalizedKey.endsWith('businessstatus')) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    function normalizeBusinessStatus(status) {
+        if (status == null) return null;
+        const normalized = status.toString().trim().toUpperCase();
+        if (!normalized) return null;
+
+        const allowedStatuses = new Set(['OPERATIONAL', 'CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY']);
+        return allowedStatuses.has(normalized) ? normalized : null;
+    }
+
+    function collectBusinessStatusStats(bills) {
+        const counts = {
+            OPERATIONAL: 0,
+            CLOSED_PERMANENTLY: 0,
+            CLOSED_TEMPORARILY: 0
+        };
+
+        let total = 0;
+
+        bills.forEach(bill => {
+            const statuses = [];
+
+            if (Array.isArray(bill.ToidudDetails)) {
+                bill.ToidudDetails.forEach(detail => {
+                    const detailFields = detail?.fields || detail;
+                    const rawStatus = findBusinessStatusValue(detailFields);
+                    const normalized = normalizeBusinessStatus(rawStatus);
+                    if (normalized) {
+                        statuses.push(normalized);
+                    }
+                });
+            }
+
+            if (statuses.length === 0) {
+                const fallbackStatus = normalizeBusinessStatus(findBusinessStatusValue(bill));
+                if (fallbackStatus) {
+                    statuses.push(fallbackStatus);
+                }
+            }
+
+            statuses.forEach(status => {
+                if (counts[status] != null) {
+                    counts[status] += 1;
+                    total += 1;
+                }
+            });
+        });
+
+        return { counts, total };
+    }
+
+    function renderBusinessStatusSummary(bills) {
+        const target = document.getElementById('business-status-content');
+        if (!target) return;
+
+        const { counts, total } = collectBusinessStatusStats(bills);
+
+        if (total === 0) {
+            target.innerHTML = '<p class="text-[var(--text-secondary)]">Business status data is currently unavailable.</p>';
+            return;
+        }
+
+        const statusOrder = [
+            { key: 'OPERATIONAL', label: 'Operational' },
+            { key: 'CLOSED_TEMPORARILY', label: 'Closed Temporarily' },
+            { key: 'CLOSED_PERMANENTLY', label: 'Closed Permanently' }
+        ];
+
+        const rows = statusOrder.map(({ key, label }) => {
+            const count = counts[key] || 0;
+            const percentage = total ? Math.round((count / total) * 100) : 0;
+            return `
+                <div class="flex items-center justify-between">
+                    <span>${label}</span>
+                    <span class="text-xs text-[var(--text-secondary)]">${count} (${percentage}%)</span>
+                </div>
+            `;
+        }).join('');
+
+        target.innerHTML = `
+            ${rows}
+            <p class="text-xs text-[var(--text-secondary)]">Based on ${total} status entr${total === 1 ? 'y' : 'ies'}.</p>
+        `;
+    }
+
     function updateInsights(bills) {
         const records = bills.map(b => ({ fields: b }));
 
@@ -107,6 +207,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const topCity = cityMix.top5.length > 0 ? cityMix.top5[0][0] : 'N/A';
         document.getElementById('most-ordered-dish').textContent = topCity;
         document.querySelector('#most-ordered-dish').previousElementSibling.textContent = 'Top City';
+
+        renderBusinessStatusSummary(bills);
     }
 
     function updateAchievements(bills) {
