@@ -82,9 +82,15 @@ function processActivityData(records) {
             getTrimmedStringField(restaurantDetails, ['googleMapsUri', 'googleMapsUrl']) ||
             getTrimmedStringField(record.fields, ['googleMapsUri', 'googleMapsUrl']);
 
+        const displayName =
+            getTrimmedStringField(restaurantDetails, ['GooglePlaceName']) ||
+            getTrimmedStringField(record.fields, ['GooglePlaceName']) ||
+            record.fields.Nimetus ||
+            'N/A';
+
         return {
             id: record.id,
-            name: record.fields.Nimetus || 'N/A',
+            name: displayName,
             restaurantName: restaurantDetails?.Nimetus,
             googleMapsUri,
             city: record.fields.Linn || 'N/A',
