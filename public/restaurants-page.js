@@ -1,4 +1,5 @@
 import { showLoader, hideLoader } from './utils/loader.js';
+import { getTrimmedStringField, getNumericField, resolvePriceLevel } from './utils/field-utils.js';
 
 let currentPage = 1;
 const itemsPerPage = 10;
@@ -49,90 +50,6 @@ async function initializePage() {
     }
 }
 
-function getTrimmedStringField(source, fieldNames) {
-    if (!source) return null;
-
-    for (const fieldName of fieldNames) {
-        const targetName = fieldName.toLowerCase();
-        for (const [key, value] of Object.entries(source)) {
-            if (key.toLowerCase() === targetName && typeof value === 'string') {
-                const trimmedValue = value.trim();
-                if (trimmedValue) {
-                    return trimmedValue;
-                }
-            }
-        }
-    }
-
-    return null;
-}
-
-function getNumericField(source, fieldNames) {
-    if (!source) return null;
-
-    for (const fieldName of fieldNames) {
-        const targetName = fieldName.toLowerCase();
-        for (const [key, value] of Object.entries(source)) {
-            if (key.toLowerCase() === targetName) {
-                const numericValue = Number(value);
-                if (!Number.isNaN(numericValue)) {
-                    return numericValue;
-                }
-            }
-        }
-    }
-
-    return null;
-}
-
-function formatPriceLevel(priceLevel) {
-    if (priceLevel == null) return null;
-
-    const coerceLevel = level => {
-        if (!Number.isFinite(level)) return null;
-        const rounded = Math.round(level);
-        if (rounded === 0) {
-            return { display: 'Free', level: 0 };
-        }
-        if (rounded >= 1 && rounded <= 4) {
-            return { display: '€'.repeat(rounded), level: rounded };
-        }
-        return null;
-    };
-
-    if (typeof priceLevel === 'number') {
-        const numericResult = coerceLevel(priceLevel);
-        if (numericResult) return numericResult;
-    }
-
-    const normalizedOriginal = priceLevel.toString().trim();
-    if (!normalizedOriginal) return null;
-
-    const numericValue = Number(normalizedOriginal);
-    const numericResult = coerceLevel(numericValue);
-    if (numericResult) return numericResult;
-
-    const normalizedKey = normalizedOriginal
-        .replace(/[-\s]+/g, '_')
-        .toUpperCase();
-
-    const enumLevels = {
-        PRICE_LEVEL_FREE: 0,
-        PRICE_LEVEL_INEXPENSIVE: 1,
-        PRICE_LEVEL_MODERATE: 2,
-        PRICE_LEVEL_EXPENSIVE: 3,
-        PRICE_LEVEL_VERY_EXPENSIVE: 4,
-        FREE: 0,
-        INEXPENSIVE: 1,
-        MODERATE: 2,
-        EXPENSIVE: 3,
-        VERY_EXPENSIVE: 4
-    };
-
-    const mappedLevel = enumLevels[normalizedKey];
-    return mappedLevel == null ? null : coerceLevel(mappedLevel);
-}
-
 function processActivityData(records) {
     return records.map(record => {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
@@ -159,11 +76,7 @@ function processActivityData(records) {
             getNumericField(record.fields, ['GooglePlacesRating']);
         const rating = Number.isFinite(ratingRaw) && ratingRaw >= 0 && ratingRaw <= 5 ? ratingRaw : null;
 
-        const priceLevelRaw =
-            getTrimmedStringField(restaurantDetails, ['priceLevel']) ||
-            getTrimmedStringField(record.fields, ['priceLevel']);
-
-        const priceLevel = formatPriceLevel(priceLevelRaw);
+        const priceLevel = resolvePriceLevel(restaurantDetails, record.fields);
 
         return {
             id: record.id,

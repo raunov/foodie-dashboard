@@ -8,6 +8,7 @@ import {
     checkFamilyFeast
 } from './utils/calculators.js';
 import { showLoader, hideLoader } from './utils/loader.js';
+import { getTrimmedStringField, resolvePriceLevel } from './utils/field-utils.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Only run this script on the main page by checking for a unique element
@@ -107,6 +108,67 @@ document.addEventListener('DOMContentLoaded', function() {
         const topCity = cityMix.top5.length > 0 ? cityMix.top5[0][0] : 'N/A';
         document.getElementById('most-ordered-dish').textContent = topCity;
         document.querySelector('#most-ordered-dish').previousElementSibling.textContent = 'Top City';
+
+        // 5. Price Level Distribution & Primary Types
+        const priceLevelCounts = new Map();
+        const primaryTypeCounts = new Map();
+
+        bills.forEach(bill => {
+            const restaurantDetails = bill.ToidudDetails?.[0]?.fields;
+
+            const priceLevel = resolvePriceLevel(restaurantDetails, bill);
+            if (priceLevel) {
+                const existing = priceLevelCounts.get(priceLevel.level) || { ...priceLevel, count: 0 };
+                existing.count += 1;
+                priceLevelCounts.set(priceLevel.level, existing);
+            }
+
+            const primaryType =
+                getTrimmedStringField(restaurantDetails, ['PrimaryType', 'Primary Type', 'primary_type', 'Cuisine', 'Cuisine Type', 'GooglePlacesPrimaryType']) ??
+                getTrimmedStringField(bill, ['PrimaryType', 'Primary Type', 'primary_type', 'Cuisine', 'Cuisine Type', 'GooglePlacesPrimaryType']);
+
+            if (primaryType) {
+                const normalized = primaryType.replace(/\s+/g, ' ').trim();
+                const key = normalized.toLowerCase();
+                const existing = primaryTypeCounts.get(key) || { label: normalized, count: 0 };
+                existing.count += 1;
+                primaryTypeCounts.set(key, existing);
+            }
+        });
+
+        const priceSummaryEl = document.getElementById('price-level-summary');
+        if (priceSummaryEl) {
+            const priceEntries = Array.from(priceLevelCounts.values()).sort((a, b) => a.level - b.level);
+            const totalPriceEntries = priceEntries.reduce((sum, entry) => sum + entry.count, 0);
+
+            if (totalPriceEntries === 0) {
+                priceSummaryEl.textContent = 'Price data unavailable';
+            } else if (priceEntries.length === 1) {
+                const only = priceEntries[0];
+                const label = only.display;
+                priceSummaryEl.textContent = `${label} • ${only.count} bill${only.count === 1 ? '' : 's'}`;
+            } else {
+                const segments = priceEntries.map(entry => `${entry.display} (${entry.count})`);
+                priceSummaryEl.textContent = `${segments.join(', ')} • ${priceEntries.length} tiers`;
+            }
+        }
+
+        const primarySummaryEl = document.getElementById('primary-type-summary');
+        if (primarySummaryEl) {
+            const primaryEntries = Array.from(primaryTypeCounts.values()).sort((a, b) => {
+                if (b.count !== a.count) return b.count - a.count;
+                return a.label.localeCompare(b.label);
+            });
+
+            if (primaryEntries.length === 0) {
+                primarySummaryEl.textContent = 'Primary type data unavailable';
+            } else {
+                const topPrimary = primaryEntries.slice(0, 3).map(entry => `${entry.label} (${entry.count})`);
+                const uniqueCount = primaryEntries.length;
+                const typeWord = uniqueCount === 1 ? 'type' : 'types';
+                primarySummaryEl.textContent = `Top: ${topPrimary.join(', ')} • ${uniqueCount} ${typeWord}`;
+            }
+        }
     }
 
     function updateAchievements(bills) {
