@@ -79,6 +79,39 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-spent').textContent = `€${totalSpent.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('average-bill').textContent = `€${averageBill.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('bills-tracked').textContent = billsTracked;
+
+        const identifiers = new Set();
+        bills.forEach(bill => {
+            const detailPlaceId = bill?.ToidudDetails?.[0]?.fields?.GooglePlaceId;
+            const directPlaceId = bill?.GooglePlaceId;
+            const restaurantName = bill?.Restoran || bill?.Restaurant || bill?.RestaurantName;
+
+            const identifier = detailPlaceId || directPlaceId || restaurantName;
+            if (!identifier) {
+                return;
+            }
+
+            const normalized = typeof identifier === 'string'
+                ? identifier.trim().toLowerCase()
+                : String(identifier).toLowerCase();
+            if (normalized) {
+                identifiers.add(normalized);
+            }
+        });
+
+        const uniqueRestaurantCount = identifiers.size;
+        const uniqueRestaurantNode = document.getElementById('unique-restaurants');
+        const uniqueRestaurantMessageNode = document.getElementById('unique-restaurants-message');
+
+        if (uniqueRestaurantNode) {
+            uniqueRestaurantNode.textContent = uniqueRestaurantCount;
+        }
+
+        if (uniqueRestaurantMessageNode) {
+            uniqueRestaurantMessageNode.textContent = uniqueRestaurantCount > 0
+                ? (uniqueRestaurantCount === 1 ? 'One tasty stop so far.' : 'Keep discovering new favorites!')
+                : 'Add a bill to discover new favorites!';
+        }
     }
 
     function updateInsights(bills) {
