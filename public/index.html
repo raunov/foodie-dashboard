@@ -145,8 +145,14 @@
                                     <span class="material-symbols-outlined text-white">attach_money</span>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-[var(--text-secondary)]">Average Tuesday Meal</p>
-                                    <p id="average-tuesday-meal" class="font-bold text-lg text-white">...</p>
+                                    <p class="text-sm text-[var(--text-secondary)]">Weekend vs Weekday Spend</p>
+                                    <div id="average-tuesday-meal" class="space-y-1 text-white">
+                                        <div class="flex items-baseline gap-2">
+                                            <span data-role="weekend-value" class="font-bold text-lg">Weekend: —</span>
+                                            <span data-role="delta-badge" class="text-xs font-semibold px-2 py-0.5 rounded-full hidden">Δ —</span>
+                                        </div>
+                                        <p data-role="weekday-value" class="text-sm text-[var(--text-secondary)]">Weekday: —</p>
+                                    </div>
                                 </div>
                             </div>
                             <div class="bg-[var(--background-color)] p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">

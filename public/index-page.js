@@ -478,8 +478,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 3. Weekend vs Weekday
         const weekendEffect = calculateWeekendEffect(records);
-        document.getElementById('average-tuesday-meal').textContent = `Weekend: ${weekendEffect.avgWeekend}€`;
-        document.querySelector('#average-tuesday-meal').previousElementSibling.textContent = 'Avg. Weekend Bill';
+        const formatEuroValue = (value) => Number.isFinite(value)
+            ? `€${value.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '—';
+        const weekendCard = document.getElementById('average-tuesday-meal');
+        if (weekendCard) {
+            const labelNode = weekendCard.previousElementSibling;
+            if (labelNode) {
+                labelNode.textContent = 'Weekend vs Weekday Spend';
+            }
+
+            const weekendValueNode = weekendCard.querySelector('[data-role="weekend-value"]');
+            if (weekendValueNode) {
+                weekendValueNode.textContent = `Weekend: ${formatEuroValue(weekendEffect.avgWeekend)}`;
+            }
+
+            const weekdayValueNode = weekendCard.querySelector('[data-role="weekday-value"]');
+            if (weekdayValueNode) {
+                weekdayValueNode.textContent = `Weekday: ${formatEuroValue(weekendEffect.avgWeekday)}`;
+            }
+
+            const deltaBadge = weekendCard.querySelector('[data-role="delta-badge"]');
+            if (deltaBadge) {
+                const colorClasses = [
+                    'bg-emerald-500/20',
+                    'text-emerald-300',
+                    'bg-rose-500/20',
+                    'text-rose-300',
+                    'bg-[var(--accent-blue)]/20',
+                    'text-[var(--accent-blue)]'
+                ];
+                deltaBadge.classList.remove(...colorClasses);
+
+                if (Number.isFinite(weekendEffect.deltaPercent)) {
+                    const deltaValue = weekendEffect.deltaPercent;
+                    const sign = deltaValue > 0 ? '+' : deltaValue < 0 ? '' : '';
+                    deltaBadge.textContent = `Δ ${sign}${deltaValue.toFixed(1)}%`;
+
+                    if (deltaValue > 0) {
+                        deltaBadge.classList.add('bg-emerald-500/20', 'text-emerald-300');
+                    } else if (deltaValue < 0) {
+                        deltaBadge.classList.add('bg-rose-500/20', 'text-rose-300');
+                    } else {
+                        deltaBadge.classList.add('bg-[var(--accent-blue)]/20', 'text-[var(--accent-blue)]');
+                    }
+
+                    deltaBadge.classList.remove('hidden');
+                } else {
+                    deltaBadge.textContent = 'Δ —';
+                    deltaBadge.classList.add('hidden');
+                }
+            }
+        }
 
         // 4. Top City
         const cityMix = calculateCityMix(records);
