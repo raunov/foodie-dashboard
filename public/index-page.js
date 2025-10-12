@@ -2,6 +2,7 @@ import {
     calculateSeasonality,
     calculateCityMix,
     calculateWeekendEffect,
+    calculateLocalVsTravelShare,
     checkFirstBite,
     checkGlobeTaster,
     checkWeekendWarrior,
@@ -531,7 +532,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // 4. Top City
+        // 4. Local vs Travel Spend
+        const localRecords = records.filter(r => r.fields['Spend Type'] === 'Local');
+        const travelRecords = records.filter(r => r.fields['Spend Type'] === 'Travel');
+        const localTravelSummary = calculateLocalVsTravelShare(localRecords, travelRecords);
+        const localTravelNode = document.getElementById('local-travel-summary');
+        if (localTravelNode) {
+            const [localValueRaw, travelValueRaw] = localTravelSummary.valueData || [];
+            const toEuro = (value) => {
+                const numericValue = Number(value);
+                if (!Number.isFinite(numericValue)) {
+                    return '€0.00';
+                }
+                return `€${numericValue.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            };
+
+            localTravelNode.textContent = `${toEuro(localValueRaw)} Local / ${toEuro(travelValueRaw)} Travel`;
+        }
+
+        // 5. Top City
         const cityMix = calculateCityMix(records);
         const topCity = cityMix.top5.length > 0 ? cityMix.top5[0][0] : 'N/A';
         document.getElementById('most-ordered-dish').textContent = topCity;
