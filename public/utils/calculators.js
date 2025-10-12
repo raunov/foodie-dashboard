@@ -207,8 +207,10 @@ export function calculateStreaks(records) {
 }
 
 export function calculateWeekendEffect(records) {
-    let weekendSpend = 0, weekdaySpend = 0;
-    let weekendCount = 0, weekdayCount = 0;
+    let weekendSpend = 0;
+    let weekdaySpend = 0;
+    let weekendCount = 0;
+    let weekdayCount = 0;
 
     records.forEach(record => {
         const day = new Date(record.fields.Kuupäev).getDay();
@@ -222,14 +224,18 @@ export function calculateWeekendEffect(records) {
         }
     });
 
-    const avgWeekend = weekendCount > 0 ? (weekendSpend / weekendCount) : 0;
-    const avgWeekday = weekdayCount > 0 ? (weekdaySpend / weekdayCount) : 0;
-    const deltaPercent = avgWeekday > 0 ? (((avgWeekend - avgWeekday) / avgWeekday) * 100) : 0;
+    const avgWeekend = weekendCount > 0 ? (weekendSpend / weekendCount) : null;
+    const avgWeekday = weekdayCount > 0 ? (weekdaySpend / weekdayCount) : null;
+    const deltaPercent = (avgWeekend != null && avgWeekday != null && avgWeekday !== 0)
+        ? ((avgWeekend - avgWeekday) / avgWeekday) * 100
+        : null;
 
     return {
-        avgWeekend: avgWeekend.toFixed(2),
-        avgWeekday: avgWeekday.toFixed(2),
-        deltaPercent: deltaPercent.toFixed(2)
+        weekendCount,
+        weekdayCount,
+        avgWeekend,
+        avgWeekday,
+        deltaPercent
     };
 }
 

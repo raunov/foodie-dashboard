@@ -65,6 +65,15 @@ function processAndRenderInsights(records) {
     const localRecords = records.filter(r => r.fields['Spend Type'] === 'Local');
     const travelRecords = records.filter(r => r.fields['Spend Type'] === 'Travel');
 
+    const weekendEffect = calculateWeekendEffect(records);
+    const formatDeltaPercent = (value) => {
+        if (!Number.isFinite(value)) {
+            return 'Δ —';
+        }
+        const sign = value > 0 ? '+' : value < 0 ? '' : '';
+        return `Δ ${sign}${value.toFixed(1)}%`;
+    };
+
     const insights = [
         { title: 'Total Spent', value: `Local: ${calculateTotalSpent(records).local.ytd}€ (YTD) <br>Travel: ${calculateTotalSpent(records).travel.ytd}€ (YTD)`, icon: 'paid', color: 'var(--primary-color)', description: 'Total amount spent year-to-date (YTD) for local and travel categories.' },
         { title: 'Average Bill', value: `Local: ${calculateAverageAndMedianBill(localRecords, travelRecords).local.avg}€<br>Travel: ${calculateAverageAndMedianBill(localRecords, travelRecords).travel.avg}€`, icon: 'monitoring', color: 'var(--accent-purple)', description: 'The average cost of a single restaurant bill, separated by local and travel.' },
@@ -76,7 +85,7 @@ function processAndRenderInsights(records) {
         { title: 'Travel Premium', value: `${calculateLocalVsTravelShare(localRecords, travelRecords).travelPremium}x`, icon: 'flight_takeoff', color: 'var(--accent-blue)', description: 'The ratio of your average travel bill to your average local bill. A value of 1.5x means you spend 50% more on average when traveling.' },
         { title: 'Avg. Cost per Person', value: Object.entries(calculateFamilyInvolvement(records)).map(([size, avg]) => `${size}p: ${avg}€`).join('<br>') || 'N/A', icon: 'groups', color: 'var(--accent-yellow)', description: 'The average cost per person when dining with family members.' },
         { title: 'Dining Streaks', value: `Streak: ${calculateStreaks(records).longestStreak} days<br>Gap: ${calculateStreaks(records).longestGap} days`, icon: 'local_fire_department', color: 'var(--accent-red)', description: 'The longest streak of consecutive days with a restaurant bill, and the longest gap without one.' },
-        { title: 'Weekend Effect', value: `Δ ${calculateWeekendEffect(records).deltaPercent}%`, icon: 'deck', color: 'var(--primary-color)', description: 'The percentage difference in average spending between weekends (Sat-Sun) and weekdays (Mon-Fri).' },
+        { title: 'Weekend Effect', value: formatDeltaPercent(weekendEffect.deltaPercent), icon: 'deck', color: 'var(--primary-color)', description: 'The percentage difference in average spending between weekends (Sat-Sun) and weekdays (Mon-Fri).' },
         { title: 'Photo Coverage', value: `${calculateAttachmentCoverage(records).coveragePercent}%`, icon: 'attachment', color: 'var(--accent-purple)', description: 'The percentage of your bills that have a photo attached.' },
         { title: 'Top Travel City', value: (calculateCityMix(records, 'Tallinn').top5[0] || ['N/A'])[0], icon: 'flight', color: 'var(--accent-blue)', description: 'The city where you have spent the most money while traveling (excluding Tallinn).' },
     ];
