@@ -86,51 +86,31 @@ function getNumericField(source, fieldNames) {
 }
 
 function formatPriceLevel(priceLevel) {
-    if (priceLevel == null) return null;
+    if (typeof priceLevel !== 'string') return null;
 
-    const coerceLevel = level => {
-        if (!Number.isFinite(level)) return null;
-        const rounded = Math.round(level);
-        if (rounded === 0) {
-            return { display: 'Free', level: 0 };
-        }
-        if (rounded >= 1 && rounded <= 4) {
-            return { display: '€'.repeat(rounded), level: rounded };
-        }
-        return null;
-    };
-
-    if (typeof priceLevel === 'number') {
-        const numericResult = coerceLevel(priceLevel);
-        if (numericResult) return numericResult;
-    }
-
-    const normalizedOriginal = priceLevel.toString().trim();
-    if (!normalizedOriginal) return null;
-
-    const numericValue = Number(normalizedOriginal);
-    const numericResult = coerceLevel(numericValue);
-    if (numericResult) return numericResult;
-
-    const normalizedKey = normalizedOriginal
+    const normalizedKey = priceLevel
+        .trim()
         .replace(/[-\s]+/g, '_')
         .toUpperCase();
+
+    if (!normalizedKey) return null;
 
     const enumLevels = {
         PRICE_LEVEL_FREE: 0,
         PRICE_LEVEL_INEXPENSIVE: 1,
         PRICE_LEVEL_MODERATE: 2,
         PRICE_LEVEL_EXPENSIVE: 3,
-        PRICE_LEVEL_VERY_EXPENSIVE: 4,
-        FREE: 0,
-        INEXPENSIVE: 1,
-        MODERATE: 2,
-        EXPENSIVE: 3,
-        VERY_EXPENSIVE: 4
+        PRICE_LEVEL_VERY_EXPENSIVE: 4
     };
 
-    const mappedLevel = enumLevels[normalizedKey];
-    return mappedLevel == null ? null : coerceLevel(mappedLevel);
+    const level = enumLevels[normalizedKey];
+    if (level == null) return null;
+
+    if (level === 0) {
+        return { display: 'Free', level };
+    }
+
+    return { display: '€'.repeat(level), level };
 }
 
 function processActivityData(records) {
