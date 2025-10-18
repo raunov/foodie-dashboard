@@ -90,9 +90,23 @@
                         <p class="text-xs text-[var(--text-secondary)] mt-4">Based on menu price per dish.</p>
                     </div>
                     <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] hover:border-[var(--accent-yellow)] transition-all duration-300 transform hover:-translate-y-1">
-                        <p class="text-sm font-medium text-[var(--text-secondary)]">Most Frequent Dish</p>
-                        <p id="most-frequent-dish" class="text-lg font-semibold text-white mt-2 leading-tight">—</p>
-                        <p id="most-expensive-dish" class="text-xs text-[var(--text-secondary)] mt-4">Top splurge: —</p>
+                        <p class="text-sm font-medium text-[var(--text-secondary)]">Top Emoji Category</p>
+                        <p id="top-emoji-category" class="text-lg font-semibold text-white mt-2 leading-tight">—</p>
+                        <p id="emoji-category-details" class="text-xs text-[var(--text-secondary)] mt-3">Add emoji to your dishes to unlock category insights.</p>
+                        <p id="top-splurge-dish" class="text-xs text-[var(--text-secondary)] mt-4">Top splurge: —</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-12">
+                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)]">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+                        <h2 class="text-2xl font-semibold text-white">Dish Emoji Categories</h2>
+                        <span id="emoji-category-count" class="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] bg-[var(--background-color)] px-3 py-1 rounded-full border border-[var(--border-color)]">0 categories</span>
+                    </div>
+                    <p class="text-sm text-[var(--text-secondary)] mb-6">Explore how your dishes cluster by their emoji mood and see where you spend the most.</p>
+                    <div id="emoji-category-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <!-- Filled dynamically -->
                     </div>
                 </div>
             </section>

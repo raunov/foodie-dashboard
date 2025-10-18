@@ -87,7 +87,7 @@
                     </button>
                 </div>
             </header>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                 <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--primary-color)] transition-all duration-300 transform hover:-translate-y-1">
                     <div>
                         <p class="text-sm font-medium text-[var(--text-secondary)]">Total Spent</p>
@@ -115,6 +115,13 @@
                         <p id="unique-restaurants" class="text-4xl font-bold text-[var(--accent-yellow)] mt-2 font-poppins">0</p>
                     </div>
                     <p id="unique-restaurants-message" class="text-xs text-[var(--text-secondary)] mt-4">Add a bill to discover new favorites!</p>
+                </div>
+                <div class="bg-[var(--card-color)] p-6 rounded-2xl border border-[var(--border-color)] flex flex-col justify-between hover:border-[var(--accent-teal,#14b8a6)] transition-all duration-300 transform hover:-translate-y-1">
+                    <div>
+                        <p class="text-sm font-medium text-[var(--text-secondary)]">Dishes Logged</p>
+                        <p id="home-total-dishes" class="text-4xl font-bold text-[var(--accent-teal,#14b8a6)] mt-2 font-poppins">0</p>
+                    </div>
+                    <p id="home-dish-summary" class="text-xs text-[var(--text-secondary)] mt-4">Add emoji-tagged dishes to unlock tasty insights.</p>
                 </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -164,13 +171,14 @@
                                     <p id="local-travel-summary" class="font-bold text-lg text-white">€0.00 Local / €0.00 Travel</p>
                                 </div>
                             </div>
-                            <div class="bg-[var(--background-color)] p-4 rounded-xl flex items-center gap-4 hover:bg-gray-700/80 transition-all duration-300">
+                            <div class="bg-[var(--background-color)] p-4 rounded-xl flex items-start gap-4 hover:bg-gray-700/80 transition-all duration-300">
                                 <div class="bg-[var(--accent-yellow)] p-3 rounded-full">
-                                    <span class="material-symbols-outlined text-white">restaurant_menu</span>
+                                    <span class="material-symbols-outlined text-white">emoji_food_beverage</span>
                                 </div>
-                                <div>
-                                    <p class="text-sm text-[var(--text-secondary)]">Most Ordered Dish</p>
-                                    <p id="most-ordered-dish" class="font-bold text-lg text-white">...</p>
+                                <div class="w-full">
+                                    <p class="text-sm text-[var(--text-secondary)]">Top Dish Emojis</p>
+                                    <div id="top-dish-emoji-list" class="flex flex-wrap gap-2 mt-2"></div>
+                                    <p id="top-dish-emoji-message" class="text-xs text-[var(--text-secondary)] mt-3">Add emoji to your dishes to see your leading categories.</p>
                                 </div>
                             </div>
                         </div>

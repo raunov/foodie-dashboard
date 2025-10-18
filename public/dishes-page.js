@@ -1,4 +1,5 @@
 import { showLoader, hideLoader } from './utils/loader.js';
+import { flattenDishes, groupDishesByEmoji } from './utils/dish-helpers.js';
 
 let allDishes = [];
 let filteredDishes = [];
@@ -26,6 +27,7 @@ async function initializePage() {
         filteredDishes = [...allDishes];
 
         renderSummary(allDishes);
+        renderEmojiCategories(allDishes);
         renderSpendTypeBreakdown(allDishes);
         renderCharts(allDishes);
         renderTable(filteredDishes);
@@ -41,63 +43,13 @@ async function initializePage() {
     }
 }
 
-function flattenDishes(records) {
-    const dishes = [];
-
-    records.forEach(record => {
-        const fields = record.fields || {};
-        const dishDetails = Array.isArray(fields.ToidudDetails) ? fields.ToidudDetails : [];
-        const photos = (fields.Photos || []).concat(fields.Attachments || []);
-        const photoUrls = photos
-            .map(item => item.thumbnails?.small?.url || item.thumbnails?.large?.url || item.url)
-            .filter(Boolean);
-
-        dishDetails.forEach((dishRecord, index) => {
-            const dishFields = dishRecord?.fields || {};
-            const price = parseNumber(dishFields.Maksumus ?? dishFields.Price);
-            const quantity = parseNumber(dishFields.kogus ?? dishFields.Kogus ?? 1) || 1;
-            const totalCostCandidate = parseNumber(dishFields.Kogukulu ?? dishFields.Total);
-            const totalCost = totalCostCandidate > 0 ? totalCostCandidate : (price || 0) * quantity;
-            const dishName = dishFields.Toode || dishFields.Nimetus || 'Unknown dish';
-            const restaurant = dishFields.Restoran || dishFields.Restaurant || fields.Nimetus || 'Unknown restaurant';
-
-            dishes.push({
-                id: `${record.id}-${dishRecord?.id || index}`,
-                dishName,
-                restaurant,
-                country: dishFields.Riik || fields.Riik || '—',
-                city: dishFields.Linn || fields.Linn || '—',
-                price,
-                quantity,
-                totalCost,
-                spendType: fields['Spend Type'] || 'Unclassified',
-                date: fields.Kuupäev ? new Date(fields.Kuupäev) : null,
-                activityName: fields.Nimetus || 'Untitled bill',
-                emoji: dishFields.Emoji || fields.Emoji || '',
-                attachments: photoUrls
-            });
-        });
-    });
-
-    return dishes;
-}
-
-function parseNumber(value) {
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
-        const normalized = value.replace(',', '.').replace(/[^0-9.\-]/g, '');
-        const parsed = parseFloat(normalized);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-    return 0;
-}
-
 function renderSummary(dishes) {
     const totalDishesEl = document.getElementById('total-dishes');
     const uniqueDishesEl = document.getElementById('unique-dishes');
     const averageDishPriceEl = document.getElementById('average-dish-price');
-    const mostFrequentDishEl = document.getElementById('most-frequent-dish');
-    const mostExpensiveDishEl = document.getElementById('most-expensive-dish');
+    const topEmojiCategoryEl = document.getElementById('top-emoji-category');
+    const emojiCategoryDetailsEl = document.getElementById('emoji-category-details');
+    const topSplurgeDishEl = document.getElementById('top-splurge-dish');
 
     const totalDishes = dishes.length;
     const priceValues = dishes.filter(d => d.price > 0).map(d => d.price);
@@ -105,14 +57,9 @@ function renderSummary(dishes) {
     const avgPrice = priceValues.length ? totalPrice / priceValues.length : 0;
 
     const uniqueDishNames = new Set(dishes.map(d => `${d.dishName}|${d.restaurant}`));
-
-    const frequencyMap = dishes.reduce((acc, dish) => {
-        const key = `${dish.dishName}|${dish.restaurant}`;
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-    }, {});
-    const mostFrequentEntry = Object.entries(frequencyMap).sort((a, b) => b[1] - a[1])[0];
-    const mostFrequentDish = mostFrequentEntry ? mostFrequentEntry[0].split('|')[0] : '—';
+    const emojiGroups = groupDishesByEmoji(dishes);
+    const topEmoji = emojiGroups[0];
+    const runnerUpEmoji = emojiGroups[1];
 
     const mostExpensiveDish = dishes.reduce((maxDish, current) => {
         if (!maxDish || (current.price || 0) > (maxDish.price || 0)) {
@@ -124,16 +71,118 @@ function renderSummary(dishes) {
     if (totalDishesEl) totalDishesEl.textContent = totalDishes.toLocaleString();
     if (uniqueDishesEl) uniqueDishesEl.textContent = uniqueDishNames.size.toLocaleString();
     if (averageDishPriceEl) averageDishPriceEl.textContent = formatCurrency(avgPrice);
-    if (mostFrequentDishEl) mostFrequentDishEl.textContent = mostFrequentDish;
-    if (mostExpensiveDishEl) {
+    if (topEmojiCategoryEl) {
+        if (topEmoji) {
+            const dishLabel = topEmoji.count === 1 ? 'dish' : 'dishes';
+            const shareLabel = formatPercentage(topEmoji.share);
+            topEmojiCategoryEl.textContent = `${topEmoji.display} ${topEmoji.count} ${dishLabel}`;
+            topEmojiCategoryEl.dataset.share = shareLabel;
+        } else {
+            topEmojiCategoryEl.textContent = '—';
+            delete topEmojiCategoryEl.dataset.share;
+        }
+    }
+
+    if (emojiCategoryDetailsEl) {
+        if (topEmoji) {
+            const shareLabel = formatPercentage(topEmoji.share);
+            const avgPriceLabel = topEmoji.averagePrice ? formatCurrency(topEmoji.averagePrice) : '€0.00';
+            const parts = [`${shareLabel} of dishes`, `Avg ${avgPriceLabel}`];
+            if (runnerUpEmoji) {
+                parts.push(`Runner-up: ${runnerUpEmoji.display} (${runnerUpEmoji.count})`);
+            }
+            emojiCategoryDetailsEl.textContent = parts.join(' · ');
+        } else {
+            emojiCategoryDetailsEl.textContent = 'Add emoji to your dishes to unlock category insights.';
+        }
+    }
+
+    if (topSplurgeDishEl) {
         if (mostExpensiveDish) {
             const priceLabel = mostExpensiveDish.price ? formatCurrency(mostExpensiveDish.price) : '€0.00';
             const location = [mostExpensiveDish.restaurant, mostExpensiveDish.country].filter(Boolean).join(' • ');
-            mostExpensiveDishEl.textContent = `Top splurge: ${mostExpensiveDish.dishName} (${priceLabel})${location ? ` @ ${location}` : ''}`;
+            topSplurgeDishEl.textContent = `Top splurge: ${mostExpensiveDish.dishName} (${priceLabel})${location ? ` @ ${location}` : ''}`;
         } else {
-            mostExpensiveDishEl.textContent = 'Top splurge: —';
+            topSplurgeDishEl.textContent = 'Top splurge: —';
         }
     }
+}
+
+function renderEmojiCategories(dishes) {
+    const container = document.getElementById('emoji-category-grid');
+    const countBadge = document.getElementById('emoji-category-count');
+    if (!container) return;
+
+    const emojiGroups = groupDishesByEmoji(dishes);
+
+    if (countBadge) {
+        const categoryCount = emojiGroups.length;
+        const label = categoryCount === 1 ? 'category' : 'categories';
+        countBadge.textContent = `${categoryCount} ${label}`;
+    }
+
+    container.innerHTML = '';
+
+    if (!emojiGroups.length) {
+        const emptyState = document.createElement('p');
+        emptyState.className = 'text-sm text-[var(--text-secondary)]';
+        emptyState.textContent = 'No emoji categories yet. Add emoji to your dishes to see them here.';
+        container.appendChild(emptyState);
+        return;
+    }
+
+    emojiGroups.forEach(group => {
+        const card = document.createElement('div');
+        card.className = 'bg-[var(--background-color)] p-4 rounded-xl border border-[var(--border-color)] hover:border-[var(--primary-color)] transition-colors';
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between mb-3';
+
+        const emojiWrapper = document.createElement('div');
+        emojiWrapper.className = 'flex items-center gap-2';
+
+        const emojiSpan = document.createElement('span');
+        emojiSpan.className = 'text-3xl';
+        emojiSpan.textContent = group.display;
+        emojiWrapper.appendChild(emojiSpan);
+
+        if (!group.hasEmoji) {
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'text-xs text-[var(--text-secondary)] px-2 py-0.5 rounded-full border border-[var(--border-color)]';
+            labelSpan.textContent = 'No emoji';
+            emojiWrapper.appendChild(labelSpan);
+        }
+
+        header.appendChild(emojiWrapper);
+
+        const countSpan = document.createElement('span');
+        countSpan.className = 'text-sm text-[var(--text-secondary)]';
+        const dishLabel = group.count === 1 ? 'dish' : 'dishes';
+        countSpan.textContent = `${group.count} ${dishLabel}`;
+        header.appendChild(countSpan);
+
+        card.appendChild(header);
+
+        const averagePrice = document.createElement('p');
+        averagePrice.className = 'text-lg font-semibold text-white';
+        averagePrice.textContent = formatCurrency(group.averagePrice);
+        card.appendChild(averagePrice);
+
+        const shareLine = document.createElement('p');
+        shareLine.className = 'text-xs text-[var(--text-secondary)] mt-2';
+        const shareLabel = formatPercentage(group.share);
+        const restaurantLabel = group.restaurantCount === 1 ? 'restaurant' : 'restaurants';
+        shareLine.textContent = `${shareLabel} of dishes · ${group.restaurantCount} ${restaurantLabel}`;
+        card.appendChild(shareLine);
+
+        const spendLine = document.createElement('p');
+        spendLine.className = 'text-xs text-[var(--text-secondary)] mt-1';
+        const spendShareLabel = formatPercentage(group.spendShare);
+        spendLine.textContent = `Total spend: ${formatCurrency(group.totalSpend)} · ${spendShareLabel} of spend`;
+        card.appendChild(spendLine);
+
+        container.appendChild(card);
+    });
 }
 
 function renderSpendTypeBreakdown(dishes) {
@@ -426,6 +475,12 @@ function setupSearch() {
 function formatCurrency(value) {
     if (!Number.isFinite(value)) return '€0.00';
     return `€${value.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPercentage(value) {
+    if (!Number.isFinite(value) || value <= 0) return '0%';
+    if (value < 0.1) return '<0.1%';
+    return `${value.toFixed(1)}%`;
 }
 
 function escapeHtml(value) {
