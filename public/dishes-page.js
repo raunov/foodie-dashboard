@@ -5,6 +5,10 @@ let allDishes = [];
 let filteredDishes = [];
 const chartInstances = {};
 let selectedEmojiKey = null;
+let emojiCategoryViewMode = 'top';
+let emojiCategorySearchQuery = '';
+let emojiCategoryFiltersInitialized = false;
+const CATEGORY_TOP_LIMIT = 24;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -29,6 +33,7 @@ async function initializePage() {
 
         renderSummary(allDishes);
         renderEmojiCategories(allDishes);
+        setupEmojiCategoryFilters();
         renderSpendTypeBreakdown(allDishes);
         renderCharts(allDishes);
         renderTable(filteredDishes);
@@ -111,16 +116,14 @@ function renderSummary(dishes) {
 
 function renderEmojiCategories(dishes) {
     const container = document.getElementById('emoji-category-grid');
+    const wrapper = document.getElementById('emoji-category-grid-wrapper');
+    const helperEl = document.getElementById('emoji-category-helper');
     const countBadge = document.getElementById('emoji-category-count');
     if (!container) return;
 
     const emojiGroups = groupDishesByEmoji(dishes);
-
-    if (countBadge) {
-        const categoryCount = emojiGroups.length;
-        const label = categoryCount === 1 ? 'category' : 'categories';
-        countBadge.textContent = `${categoryCount} ${label}`;
-    }
+    const totalCount = emojiGroups.length;
+    const totalLabel = totalCount === 1 ? 'category' : 'categories';
 
     if (!emojiGroups.length) {
         container.innerHTML = '';
@@ -128,8 +131,19 @@ function renderEmojiCategories(dishes) {
         emptyState.className = 'text-sm text-[var(--text-secondary)]';
         emptyState.textContent = 'No emoji categories yet. Add emoji to your dishes to see them here.';
         container.appendChild(emptyState);
+        if (countBadge) {
+            countBadge.textContent = `0 ${totalLabel}`;
+        }
+        if (helperEl) {
+            helperEl.textContent = '';
+            helperEl.classList.add('hidden');
+        }
+        if (wrapper) {
+            wrapper.classList.remove('max-h-[32rem]', 'overflow-y-auto', 'pr-1');
+        }
         selectedEmojiKey = null;
         renderEmojiCategoryDetails(null);
+        updateEmojiViewButtons();
         return;
     }
 
@@ -137,9 +151,55 @@ function renderEmojiCategories(dishes) {
         selectedEmojiKey = emojiGroups[0].key;
     }
 
+    const query = emojiCategorySearchQuery.trim().toLowerCase();
+    let filteredGroups = emojiGroups;
+    if (query) {
+        filteredGroups = emojiGroups.filter(group => matchesEmojiGroup(group, query));
+    }
+
+    const showingLimited = !query && emojiCategoryViewMode === 'top' && filteredGroups.length > CATEGORY_TOP_LIMIT;
+    const displayGroups = showingLimited ? filteredGroups.slice(0, CATEGORY_TOP_LIMIT) : filteredGroups;
+
+    if (displayGroups.length && !displayGroups.some(group => group.key === selectedEmojiKey)) {
+        selectedEmojiKey = displayGroups[0].key;
+    }
+
     container.innerHTML = '';
 
-    emojiGroups.forEach(group => {
+    if (!displayGroups.length) {
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'text-sm text-[var(--text-secondary)]';
+        emptyMessage.textContent = query
+            ? `No categories match “${emojiCategorySearchQuery}”.`
+            : 'No categories available with the current view.';
+        container.appendChild(emptyMessage);
+
+        if (countBadge) {
+            if (query) {
+                countBadge.textContent = `0 matches · ${totalCount} total ${totalLabel}`;
+            } else {
+                countBadge.textContent = `0 of ${totalCount} ${totalLabel}`;
+            }
+        }
+
+        if (helperEl) {
+            helperEl.textContent = query
+                ? "Try a different search to find the emoji mood you're after."
+                : 'Switch to “All” to browse every emoji category.';
+            helperEl.classList.remove('hidden');
+        }
+
+        if (wrapper) {
+            wrapper.classList.remove('max-h-[32rem]', 'overflow-y-auto', 'pr-1');
+        }
+
+        selectedEmojiKey = null;
+        renderEmojiCategoryDetails(null);
+        updateEmojiViewButtons();
+        return;
+    }
+
+    displayGroups.forEach(group => {
         const card = document.createElement('div');
         card.className = 'bg-[var(--background-color)] p-4 rounded-xl border border-[var(--border-color)] hover:border-[var(--primary-color)] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]/40';
         card.setAttribute('role', 'button');
@@ -212,8 +272,115 @@ function renderEmojiCategories(dishes) {
         container.appendChild(card);
     });
 
+    const shouldScroll = (emojiCategoryViewMode === 'all' || query) && filteredGroups.length > CATEGORY_TOP_LIMIT;
+    if (wrapper) {
+        if (shouldScroll) {
+            wrapper.classList.add('max-h-[32rem]', 'overflow-y-auto', 'pr-1');
+        } else {
+            wrapper.classList.remove('max-h-[32rem]', 'overflow-y-auto', 'pr-1');
+        }
+    }
+
+    if (countBadge) {
+        if (query) {
+            const matchLabel = filteredGroups.length === 1 ? 'match' : 'matches';
+            countBadge.textContent = `${filteredGroups.length} ${matchLabel} · ${totalCount} total ${totalLabel}`;
+        } else if (showingLimited) {
+            countBadge.textContent = `Top ${displayGroups.length} of ${totalCount} ${totalLabel}`;
+        } else {
+            countBadge.textContent = `${displayGroups.length} of ${totalCount} ${totalLabel}`;
+        }
+    }
+
+    if (helperEl) {
+        let helperText = '';
+        if (query) {
+            helperText = `Showing matches for “${emojiCategorySearchQuery}”.`;
+        } else if (showingLimited) {
+            helperText = 'Showing your busiest emoji moods. Switch to “All” to browse everything.';
+        } else if (shouldScroll) {
+            helperText = 'Scroll to explore every emoji category.';
+        }
+        helperEl.textContent = helperText;
+        helperEl.classList.toggle('hidden', !helperText);
+    }
+
     const selectedGroup = emojiGroups.find(group => group.key === selectedEmojiKey) || null;
     renderEmojiCategoryDetails(selectedGroup);
+    updateEmojiViewButtons();
+}
+
+function setupEmojiCategoryFilters() {
+    if (emojiCategoryFiltersInitialized) return;
+    emojiCategoryFiltersInitialized = true;
+
+    const searchInput = document.getElementById('emoji-category-search');
+    const clearButton = document.getElementById('emoji-category-clear-search');
+    const viewButtons = document.querySelectorAll('[data-emoji-view]');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            emojiCategorySearchQuery = searchInput.value.trim();
+            renderEmojiCategories(allDishes);
+        });
+
+        searchInput.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && searchInput.value) {
+                searchInput.value = '';
+                emojiCategorySearchQuery = '';
+                renderEmojiCategories(allDishes);
+            }
+        });
+    }
+
+    if (clearButton) {
+        clearButton.addEventListener('click', () => {
+            if (!searchInput) return;
+            if (!searchInput.value && !emojiCategorySearchQuery) return;
+            searchInput.value = '';
+            emojiCategorySearchQuery = '';
+            renderEmojiCategories(allDishes);
+            searchInput.focus();
+        });
+    }
+
+    viewButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const view = button.dataset.emojiView;
+            if (!view || view === emojiCategoryViewMode) return;
+            emojiCategoryViewMode = view;
+            renderEmojiCategories(allDishes);
+        });
+    });
+
+    updateEmojiViewButtons();
+}
+
+function updateEmojiViewButtons() {
+    const buttons = document.querySelectorAll('[data-emoji-view]');
+    buttons.forEach(button => {
+        const view = button.dataset.emojiView;
+        if (!view) return;
+        const isActive = view === emojiCategoryViewMode;
+        button.classList.toggle('bg-[var(--primary-color)]', isActive);
+        button.classList.toggle('text-white', isActive);
+        button.classList.toggle('shadow', isActive);
+        button.classList.toggle('text-[var(--text-secondary)]', !isActive);
+        button.classList.toggle('hover:text-white', !isActive);
+    });
+}
+
+function matchesEmojiGroup(group, query) {
+    if (!query) return true;
+    const baseValues = [group.display, group.label, group.emoji].filter(Boolean);
+    if (baseValues.some(value => value.toLowerCase().includes(query))) {
+        return true;
+    }
+    return group.dishes.some(dish => {
+        return [dish.dishName, dish.restaurant]
+            .filter(Boolean)
+            .some(value => value.toLowerCase().includes(query));
+    });
 }
 
 function renderEmojiCategoryDetails(group) {
@@ -245,21 +412,28 @@ function renderEmojiCategoryDetails(group) {
     const rows = group.dishes
         .slice()
         .sort((a, b) => {
+            const dateA = a.date instanceof Date && !Number.isNaN(a.date.getTime()) ? a.date.getTime() : 0;
+            const dateB = b.date instanceof Date && !Number.isNaN(b.date.getTime()) ? b.date.getTime() : 0;
+            if (dateB !== dateA) return dateB - dateA;
             const totalDiff = (b.totalCost || 0) - (a.totalCost || 0);
             if (totalDiff !== 0) return totalDiff;
             return (b.price || 0) - (a.price || 0);
         })
-        .map(dish => `
-            <tr class="hover:bg-gray-800/60 transition-colors">
-                <td class="px-4 py-3 whitespace-nowrap text-white">${dish.emoji ? `${dish.emoji} ` : ''}${escapeHtml(dish.dishName)}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${escapeHtml(dish.restaurant)}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dish.price ? formatCurrency(dish.price) : '—'}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dish.totalCost ? formatCurrency(dish.totalCost) : '—'}</td>
-            </tr>
-        `)
+        .map(dish => {
+            const dateLabel = formatDate(dish.date);
+            return `
+                <tr class="hover:bg-gray-800/60 transition-colors">
+                    <td class="px-4 py-3 whitespace-nowrap text-white">${dish.emoji ? `${dish.emoji} ` : ''}${escapeHtml(dish.dishName)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">${escapeHtml(dish.restaurant)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dateLabel}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dish.price ? formatCurrency(dish.price) : '—'}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dish.totalCost ? formatCurrency(dish.totalCost) : '—'}</td>
+                </tr>
+            `;
+        })
         .join('');
 
-    listBody.innerHTML = rows || '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No dishes recorded for this emoji.</td></tr>';
+    listBody.innerHTML = rows || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No dishes recorded for this emoji.</td></tr>';
 }
 
 function renderSpendTypeBreakdown(dishes) {
@@ -504,7 +678,7 @@ function renderTable(dishes) {
     }
 
     const rows = dishes.map(dish => {
-        const dateLabel = dish.date ? dish.date.toLocaleDateString() : '—';
+        const dateLabel = formatDate(dish.date);
         return `
             <tr class="hover:bg-gray-800/60 transition-colors">
                 <td class="px-4 py-3 whitespace-nowrap text-white">${dish.emoji ? `${dish.emoji} ` : ''}${escapeHtml(dish.dishName)}</td>
@@ -558,6 +732,19 @@ function formatPercentage(value) {
     if (!Number.isFinite(value) || value <= 0) return '0%';
     if (value < 0.1) return '<0.1%';
     return `${value.toFixed(1)}%`;
+}
+
+function formatDate(value) {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    if (typeof value === 'string' || typeof value === 'number') {
+        const parsed = new Date(value);
+        if (!Number.isNaN(parsed.getTime())) {
+            return parsed.toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+    }
+    return '—';
 }
 
 function escapeHtml(value) {
