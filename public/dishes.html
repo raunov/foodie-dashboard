@@ -108,6 +108,29 @@
                     <div id="emoji-category-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                         <!-- Filled dynamically -->
                     </div>
+                    <div id="emoji-category-detail" class="mt-6 hidden">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+                            <div>
+                                <h3 id="emoji-category-detail-title" class="text-xl font-semibold text-white">Select an emoji category</h3>
+                                <p id="emoji-category-detail-meta" class="text-sm text-[var(--text-secondary)] mt-1">Click a card to see all dishes for that emoji.</p>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-700">
+                                <thead class="bg-gray-800/60">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Dish</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Restaurant</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Price</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="emoji-category-detail-list" class="divide-y divide-gray-800">
+                                    <!-- Filled dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </section>
 

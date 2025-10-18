@@ -51,18 +51,21 @@ export function groupDishesByEmoji(dishes) {
 
         if (!groups[key]) {
             groups[key] = {
+                key,
                 emoji: rawEmoji,
                 count: 0,
                 totalSpend: 0,
                 priceSum: 0,
                 priceCount: 0,
-                restaurants: new Set()
+                restaurants: new Set(),
+                dishes: []
             };
         }
 
         const group = groups[key];
         group.count += 1;
         group.totalSpend += dish.totalCost || 0;
+        group.dishes.push(dish);
 
         if (dish.price > 0) {
             group.priceSum += dish.price;
@@ -82,6 +85,7 @@ export function groupDishesByEmoji(dishes) {
             const hasEmoji = Boolean(group.emoji);
 
             return {
+                key: group.key,
                 emoji: group.emoji,
                 display: hasEmoji ? group.emoji : '❓',
                 label: hasEmoji ? group.emoji : 'No emoji',
@@ -91,7 +95,8 @@ export function groupDishesByEmoji(dishes) {
                 share,
                 spendShare,
                 restaurantCount: group.restaurants.size,
-                hasEmoji
+                hasEmoji,
+                dishes: group.dishes
             };
         })
         .sort((a, b) => {

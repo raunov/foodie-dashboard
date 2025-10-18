@@ -4,6 +4,7 @@ import { flattenDishes, groupDishesByEmoji } from './utils/dish-helpers.js';
 let allDishes = [];
 let filteredDishes = [];
 const chartInstances = {};
+let selectedEmojiKey = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -121,19 +122,33 @@ function renderEmojiCategories(dishes) {
         countBadge.textContent = `${categoryCount} ${label}`;
     }
 
-    container.innerHTML = '';
-
     if (!emojiGroups.length) {
+        container.innerHTML = '';
         const emptyState = document.createElement('p');
         emptyState.className = 'text-sm text-[var(--text-secondary)]';
         emptyState.textContent = 'No emoji categories yet. Add emoji to your dishes to see them here.';
         container.appendChild(emptyState);
+        selectedEmojiKey = null;
+        renderEmojiCategoryDetails(null);
         return;
     }
 
+    if (!selectedEmojiKey || !emojiGroups.some(group => group.key === selectedEmojiKey)) {
+        selectedEmojiKey = emojiGroups[0].key;
+    }
+
+    container.innerHTML = '';
+
     emojiGroups.forEach(group => {
         const card = document.createElement('div');
-        card.className = 'bg-[var(--background-color)] p-4 rounded-xl border border-[var(--border-color)] hover:border-[var(--primary-color)] transition-colors';
+        card.className = 'bg-[var(--background-color)] p-4 rounded-xl border border-[var(--border-color)] hover:border-[var(--primary-color)] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]/40';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.dataset.emojiKey = group.key;
+
+        if (group.key === selectedEmojiKey) {
+            card.classList.add('border-[var(--primary-color)]', 'bg-white/5', 'ring-2', 'ring-[var(--primary-color)]/40');
+        }
 
         const header = document.createElement('div');
         header.className = 'flex items-center justify-between mb-3';
@@ -181,8 +196,70 @@ function renderEmojiCategories(dishes) {
         spendLine.textContent = `Total spend: ${formatCurrency(group.totalSpend)} · ${spendShareLabel} of spend`;
         card.appendChild(spendLine);
 
+        card.addEventListener('click', () => {
+            if (selectedEmojiKey === group.key) return;
+            selectedEmojiKey = group.key;
+            renderEmojiCategories(dishes);
+        });
+
+        card.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                card.click();
+            }
+        });
+
         container.appendChild(card);
     });
+
+    const selectedGroup = emojiGroups.find(group => group.key === selectedEmojiKey) || null;
+    renderEmojiCategoryDetails(selectedGroup);
+}
+
+function renderEmojiCategoryDetails(group) {
+    const container = document.getElementById('emoji-category-detail');
+    const titleEl = document.getElementById('emoji-category-detail-title');
+    const metaEl = document.getElementById('emoji-category-detail-meta');
+    const listBody = document.getElementById('emoji-category-detail-list');
+
+    if (!container || !titleEl || !metaEl || !listBody) return;
+
+    if (!group) {
+        container.classList.add('hidden');
+        titleEl.textContent = 'Select an emoji category';
+        metaEl.textContent = 'Click a card to see all dishes for that emoji.';
+        listBody.innerHTML = '';
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    const dishLabel = group.count === 1 ? 'dish' : 'dishes';
+    titleEl.textContent = `${group.display} · ${group.count} ${dishLabel}`;
+
+    const shareLabel = formatPercentage(group.share);
+    const spendShareLabel = formatPercentage(group.spendShare);
+    const averagePriceLabel = group.averagePrice ? formatCurrency(group.averagePrice) : '€0.00';
+    metaEl.textContent = `${shareLabel} of dishes · ${spendShareLabel} of spend · Avg price ${averagePriceLabel}`;
+
+    const rows = group.dishes
+        .slice()
+        .sort((a, b) => {
+            const totalDiff = (b.totalCost || 0) - (a.totalCost || 0);
+            if (totalDiff !== 0) return totalDiff;
+            return (b.price || 0) - (a.price || 0);
+        })
+        .map(dish => `
+            <tr class="hover:bg-gray-800/60 transition-colors">
+                <td class="px-4 py-3 whitespace-nowrap text-white">${dish.emoji ? `${dish.emoji} ` : ''}${escapeHtml(dish.dishName)}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${escapeHtml(dish.restaurant)}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dish.price ? formatCurrency(dish.price) : '—'}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dish.totalCost ? formatCurrency(dish.totalCost) : '—'}</td>
+            </tr>
+        `)
+        .join('');
+
+    listBody.innerHTML = rows || '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No dishes recorded for this emoji.</td></tr>';
 }
 
 function renderSpendTypeBreakdown(dishes) {
