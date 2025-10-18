@@ -1,8 +1,12 @@
 import { showLoader, hideLoader } from './utils/loader.js';
+import { flattenDishes, groupDishesByEmoji } from './utils/dish-helpers.js';
 
 let allDishes = [];
 let filteredDishes = [];
 const chartInstances = {};
+let selectedEmojiKey = null;
+let emojiCategoryView = 'highlights';
+let emojiCategorySearchTerm = '';
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePage();
@@ -26,6 +30,8 @@ async function initializePage() {
         filteredDishes = [...allDishes];
 
         renderSummary(allDishes);
+        setupEmojiCategoryControls();
+        renderEmojiCategories(allDishes);
         renderSpendTypeBreakdown(allDishes);
         renderCharts(allDishes);
         renderTable(filteredDishes);
@@ -41,63 +47,13 @@ async function initializePage() {
     }
 }
 
-function flattenDishes(records) {
-    const dishes = [];
-
-    records.forEach(record => {
-        const fields = record.fields || {};
-        const dishDetails = Array.isArray(fields.ToidudDetails) ? fields.ToidudDetails : [];
-        const photos = (fields.Photos || []).concat(fields.Attachments || []);
-        const photoUrls = photos
-            .map(item => item.thumbnails?.small?.url || item.thumbnails?.large?.url || item.url)
-            .filter(Boolean);
-
-        dishDetails.forEach((dishRecord, index) => {
-            const dishFields = dishRecord?.fields || {};
-            const price = parseNumber(dishFields.Maksumus ?? dishFields.Price);
-            const quantity = parseNumber(dishFields.kogus ?? dishFields.Kogus ?? 1) || 1;
-            const totalCostCandidate = parseNumber(dishFields.Kogukulu ?? dishFields.Total);
-            const totalCost = totalCostCandidate > 0 ? totalCostCandidate : (price || 0) * quantity;
-            const dishName = dishFields.Toode || dishFields.Nimetus || 'Unknown dish';
-            const restaurant = dishFields.Restoran || dishFields.Restaurant || fields.Nimetus || 'Unknown restaurant';
-
-            dishes.push({
-                id: `${record.id}-${dishRecord?.id || index}`,
-                dishName,
-                restaurant,
-                country: dishFields.Riik || fields.Riik || '—',
-                city: dishFields.Linn || fields.Linn || '—',
-                price,
-                quantity,
-                totalCost,
-                spendType: fields['Spend Type'] || 'Unclassified',
-                date: fields.Kuupäev ? new Date(fields.Kuupäev) : null,
-                activityName: fields.Nimetus || 'Untitled bill',
-                emoji: dishFields.Emoji || fields.Emoji || '',
-                attachments: photoUrls
-            });
-        });
-    });
-
-    return dishes;
-}
-
-function parseNumber(value) {
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
-        const normalized = value.replace(',', '.').replace(/[^0-9.\-]/g, '');
-        const parsed = parseFloat(normalized);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-    return 0;
-}
-
 function renderSummary(dishes) {
     const totalDishesEl = document.getElementById('total-dishes');
     const uniqueDishesEl = document.getElementById('unique-dishes');
     const averageDishPriceEl = document.getElementById('average-dish-price');
-    const mostFrequentDishEl = document.getElementById('most-frequent-dish');
-    const mostExpensiveDishEl = document.getElementById('most-expensive-dish');
+    const topEmojiCategoryEl = document.getElementById('top-emoji-category');
+    const emojiCategoryDetailsEl = document.getElementById('emoji-category-details');
+    const topSplurgeDishEl = document.getElementById('top-splurge-dish');
 
     const totalDishes = dishes.length;
     const priceValues = dishes.filter(d => d.price > 0).map(d => d.price);
@@ -105,14 +61,9 @@ function renderSummary(dishes) {
     const avgPrice = priceValues.length ? totalPrice / priceValues.length : 0;
 
     const uniqueDishNames = new Set(dishes.map(d => `${d.dishName}|${d.restaurant}`));
-
-    const frequencyMap = dishes.reduce((acc, dish) => {
-        const key = `${dish.dishName}|${dish.restaurant}`;
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-    }, {});
-    const mostFrequentEntry = Object.entries(frequencyMap).sort((a, b) => b[1] - a[1])[0];
-    const mostFrequentDish = mostFrequentEntry ? mostFrequentEntry[0].split('|')[0] : '—';
+    const emojiGroups = groupDishesByEmoji(dishes);
+    const topEmoji = emojiGroups[0];
+    const runnerUpEmoji = emojiGroups[1];
 
     const mostExpensiveDish = dishes.reduce((maxDish, current) => {
         if (!maxDish || (current.price || 0) > (maxDish.price || 0)) {
@@ -124,16 +75,426 @@ function renderSummary(dishes) {
     if (totalDishesEl) totalDishesEl.textContent = totalDishes.toLocaleString();
     if (uniqueDishesEl) uniqueDishesEl.textContent = uniqueDishNames.size.toLocaleString();
     if (averageDishPriceEl) averageDishPriceEl.textContent = formatCurrency(avgPrice);
-    if (mostFrequentDishEl) mostFrequentDishEl.textContent = mostFrequentDish;
-    if (mostExpensiveDishEl) {
+    if (topEmojiCategoryEl) {
+        if (topEmoji) {
+            const dishLabel = topEmoji.count === 1 ? 'dish' : 'dishes';
+            const shareLabel = formatPercentage(topEmoji.share);
+            topEmojiCategoryEl.textContent = `${topEmoji.display} ${topEmoji.count} ${dishLabel}`;
+            topEmojiCategoryEl.dataset.share = shareLabel;
+        } else {
+            topEmojiCategoryEl.textContent = '—';
+            delete topEmojiCategoryEl.dataset.share;
+        }
+    }
+
+    if (emojiCategoryDetailsEl) {
+        if (topEmoji) {
+            const shareLabel = formatPercentage(topEmoji.share);
+            const avgPriceLabel = topEmoji.averagePrice ? formatCurrency(topEmoji.averagePrice) : '€0.00';
+            const parts = [`${shareLabel} of dishes`, `Avg ${avgPriceLabel}`];
+            if (runnerUpEmoji) {
+                parts.push(`Runner-up: ${runnerUpEmoji.display} (${runnerUpEmoji.count})`);
+            }
+            emojiCategoryDetailsEl.textContent = parts.join(' · ');
+        } else {
+            emojiCategoryDetailsEl.textContent = 'Add emoji to your dishes to unlock category insights.';
+        }
+    }
+
+    if (topSplurgeDishEl) {
         if (mostExpensiveDish) {
             const priceLabel = mostExpensiveDish.price ? formatCurrency(mostExpensiveDish.price) : '€0.00';
             const location = [mostExpensiveDish.restaurant, mostExpensiveDish.country].filter(Boolean).join(' • ');
-            mostExpensiveDishEl.textContent = `Top splurge: ${mostExpensiveDish.dishName} (${priceLabel})${location ? ` @ ${location}` : ''}`;
+            topSplurgeDishEl.textContent = `Top splurge: ${mostExpensiveDish.dishName} (${priceLabel})${location ? ` @ ${location}` : ''}`;
         } else {
-            mostExpensiveDishEl.textContent = 'Top splurge: —';
+            topSplurgeDishEl.textContent = 'Top splurge: —';
         }
     }
+}
+
+const EMOJI_HIGHLIGHT_LIMIT = 12;
+
+function renderEmojiCategories(dishes) {
+    const gridContainer = document.getElementById('emoji-category-grid');
+    const listContainer = document.getElementById('emoji-category-list');
+    const emptyState = document.getElementById('emoji-category-empty');
+    const footnote = document.getElementById('emoji-category-footnote');
+    const countBadge = document.getElementById('emoji-category-count');
+    if (!gridContainer || !listContainer || !emptyState) return;
+
+    syncEmojiViewToggle();
+
+    const emojiGroups = groupDishesByEmoji(dishes);
+    const totalCategories = emojiGroups.length;
+
+    let filteredGroups = emojiGroups;
+    const query = emojiCategorySearchTerm;
+    if (query) {
+        filteredGroups = emojiGroups.filter(group => {
+            const labelMatch = group.label.toLowerCase().includes(query);
+            if (labelMatch) return true;
+            return group.dishes.some(dish => {
+                return [dish.dishName, dish.restaurant]
+                    .filter(Boolean)
+                    .some(value => value.toString().toLowerCase().includes(query));
+            });
+        });
+    }
+
+    if (countBadge) {
+        if (query) {
+            const matchLabel = filteredGroups.length === 1 ? 'match' : 'matches';
+            countBadge.textContent = `${filteredGroups.length} ${matchLabel} · ${totalCategories} total`;
+        } else {
+            const label = totalCategories === 1 ? 'category' : 'categories';
+            countBadge.textContent = `${totalCategories} ${label}`;
+        }
+    }
+
+    if (!filteredGroups.length) {
+        gridContainer.classList.add('hidden');
+        listContainer.classList.add('hidden');
+        emptyState.textContent = totalCategories === 0
+            ? 'No emoji categories yet. Add emoji to your dishes to see them here.'
+            : 'No emoji categories match your current filters.';
+        emptyState.classList.remove('hidden');
+        if (footnote) footnote.classList.add('hidden');
+        selectedEmojiKey = null;
+        renderEmojiCategoryDetails(null);
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+
+    const visibleKeys = filteredGroups.map(group => group.key);
+    if (!visibleKeys.includes(selectedEmojiKey)) {
+        selectedEmojiKey = filteredGroups[0]?.key || null;
+    }
+
+    gridContainer.innerHTML = '';
+    listContainer.innerHTML = '';
+
+    if (emojiCategoryView === 'highlights') {
+        gridContainer.classList.remove('hidden');
+        listContainer.classList.add('hidden');
+
+        const highlightGroups = filteredGroups.slice(0, EMOJI_HIGHLIGHT_LIMIT);
+        highlightGroups.forEach(group => {
+            gridContainer.appendChild(buildEmojiCategoryCard(group, dishes));
+        });
+
+        if (footnote) {
+            if (query) {
+                if (filteredGroups.length > EMOJI_HIGHLIGHT_LIMIT) {
+                    footnote.textContent = `Showing top ${EMOJI_HIGHLIGHT_LIMIT} of ${filteredGroups.length} matches. Switch to "All categories" to browse the full list.`;
+                    footnote.classList.remove('hidden');
+                } else {
+                    footnote.textContent = `${filteredGroups.length} ${filteredGroups.length === 1 ? 'category matches' : 'categories match'} your search.`;
+                    footnote.classList.remove('hidden');
+                }
+            } else if (emojiGroups.length > EMOJI_HIGHLIGHT_LIMIT) {
+                footnote.textContent = `Showing top ${EMOJI_HIGHLIGHT_LIMIT} of ${emojiGroups.length} categories. Switch to "All categories" to browse everything.`;
+                footnote.classList.remove('hidden');
+            } else {
+                footnote.classList.add('hidden');
+            }
+        }
+    } else {
+        gridContainer.classList.add('hidden');
+        listContainer.classList.remove('hidden');
+
+        filteredGroups.forEach(group => {
+            listContainer.appendChild(buildEmojiCategoryListItem(group, dishes));
+        });
+
+        if (footnote) {
+            footnote.classList.add('hidden');
+        }
+    }
+
+    const selectedGroup = emojiGroups.find(group => group.key === selectedEmojiKey) || null;
+    renderEmojiCategoryDetails(selectedGroup);
+}
+
+function setupEmojiCategoryControls() {
+    const highlightsButton = document.getElementById('emoji-view-highlights');
+    const directoryButton = document.getElementById('emoji-view-directory');
+    const searchInput = document.getElementById('emoji-category-search');
+    const clearButton = document.getElementById('emoji-category-search-clear');
+
+    if (highlightsButton) {
+        highlightsButton.addEventListener('click', () => {
+            if (emojiCategoryView === 'highlights') return;
+            emojiCategoryView = 'highlights';
+            renderEmojiCategories(allDishes);
+        });
+    }
+
+    if (directoryButton) {
+        directoryButton.addEventListener('click', () => {
+            if (emojiCategoryView === 'directory') return;
+            emojiCategoryView = 'directory';
+            renderEmojiCategories(allDishes);
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', event => {
+            emojiCategorySearchTerm = event.target.value.toLowerCase().trim();
+            syncEmojiSearchClear();
+            renderEmojiCategories(allDishes);
+        });
+
+        searchInput.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                searchInput.value = '';
+                emojiCategorySearchTerm = '';
+                syncEmojiSearchClear();
+                renderEmojiCategories(allDishes);
+            }
+        });
+    }
+
+    if (clearButton) {
+        clearButton.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+            emojiCategorySearchTerm = '';
+            syncEmojiSearchClear();
+            renderEmojiCategories(allDishes);
+        });
+    }
+
+    syncEmojiSearchClear();
+    syncEmojiViewToggle();
+}
+
+function syncEmojiViewToggle() {
+    const highlightsButton = document.getElementById('emoji-view-highlights');
+    const directoryButton = document.getElementById('emoji-view-directory');
+
+    if (highlightsButton) {
+        const isActive = emojiCategoryView === 'highlights';
+        highlightsButton.setAttribute('aria-selected', String(isActive));
+        highlightsButton.classList.toggle('bg-[var(--primary-color)]', isActive);
+        highlightsButton.classList.toggle('text-white', isActive);
+        highlightsButton.classList.toggle('shadow', isActive);
+        highlightsButton.classList.toggle('text-[var(--text-secondary)]', !isActive);
+    }
+
+    if (directoryButton) {
+        const isActive = emojiCategoryView === 'directory';
+        directoryButton.setAttribute('aria-selected', String(isActive));
+        directoryButton.classList.toggle('bg-[var(--primary-color)]', isActive);
+        directoryButton.classList.toggle('text-white', isActive);
+        directoryButton.classList.toggle('shadow', isActive);
+        directoryButton.classList.toggle('text-[var(--text-secondary)]', !isActive);
+    }
+}
+
+function syncEmojiSearchClear() {
+    const searchInput = document.getElementById('emoji-category-search');
+    const clearButton = document.getElementById('emoji-category-search-clear');
+    if (!searchInput || !clearButton) return;
+
+    if (searchInput.value.trim()) {
+        clearButton.classList.remove('hidden');
+    } else {
+        clearButton.classList.add('hidden');
+    }
+}
+
+function buildEmojiCategoryCard(group, dishes) {
+    const card = document.createElement('div');
+    card.className = 'bg-[var(--background-color)] p-4 rounded-xl border border-[var(--border-color)] hover:border-[var(--primary-color)] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]/40';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.dataset.emojiKey = group.key;
+    card.setAttribute('aria-pressed', String(group.key === selectedEmojiKey));
+
+    if (group.key === selectedEmojiKey) {
+        card.classList.add('border-[var(--primary-color)]', 'bg-white/5', 'ring-2', 'ring-[var(--primary-color)]/40');
+    }
+
+    const header = document.createElement('div');
+    header.className = 'flex items-center justify-between mb-3';
+
+    const emojiWrapper = document.createElement('div');
+    emojiWrapper.className = 'flex items-center gap-2';
+
+    const emojiSpan = document.createElement('span');
+    emojiSpan.className = 'text-3xl';
+    emojiSpan.textContent = group.display;
+    emojiWrapper.appendChild(emojiSpan);
+
+    if (!group.hasEmoji) {
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'text-xs text-[var(--text-secondary)] px-2 py-0.5 rounded-full border border-[var(--border-color)]';
+        labelSpan.textContent = 'No emoji';
+        emojiWrapper.appendChild(labelSpan);
+    }
+
+    header.appendChild(emojiWrapper);
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'text-sm text-[var(--text-secondary)]';
+    const dishLabel = group.count === 1 ? 'dish' : 'dishes';
+    countSpan.textContent = `${group.count} ${dishLabel}`;
+    header.appendChild(countSpan);
+
+    card.appendChild(header);
+
+    const averagePrice = document.createElement('p');
+    averagePrice.className = 'text-lg font-semibold text-white';
+    averagePrice.textContent = formatCurrency(group.averagePrice);
+    card.appendChild(averagePrice);
+
+    const shareLine = document.createElement('p');
+    shareLine.className = 'text-xs text-[var(--text-secondary)] mt-2';
+    const shareLabel = formatPercentage(group.share);
+    const restaurantLabel = group.restaurantCount === 1 ? 'restaurant' : 'restaurants';
+    shareLine.textContent = `${shareLabel} of dishes · ${group.restaurantCount} ${restaurantLabel}`;
+    card.appendChild(shareLine);
+
+    const spendLine = document.createElement('p');
+    spendLine.className = 'text-xs text-[var(--text-secondary)] mt-1';
+    const spendShareLabel = formatPercentage(group.spendShare);
+    spendLine.textContent = `Total spend: ${formatCurrency(group.totalSpend)} · ${spendShareLabel} of spend`;
+    card.appendChild(spendLine);
+
+    card.addEventListener('click', () => {
+        if (selectedEmojiKey === group.key) return;
+        selectedEmojiKey = group.key;
+        renderEmojiCategories(dishes);
+    });
+
+    card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            card.click();
+        }
+    });
+
+    return card;
+}
+
+function buildEmojiCategoryListItem(group, dishes) {
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('role', 'listitem');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'w-full text-left flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--background-color)] transition-colors hover:border-[var(--primary-color)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-color)]/40';
+    button.dataset.emojiKey = group.key;
+    button.setAttribute('aria-pressed', String(group.key === selectedEmojiKey));
+
+    if (group.key === selectedEmojiKey) {
+        button.classList.add('border-[var(--primary-color)]', 'bg-white/5');
+    }
+
+    const leading = document.createElement('div');
+    leading.className = 'flex items-center gap-3';
+
+    const emojiSpan = document.createElement('span');
+    emojiSpan.className = 'text-2xl';
+    emojiSpan.textContent = group.display;
+    leading.appendChild(emojiSpan);
+
+    const textWrapper = document.createElement('div');
+    textWrapper.className = 'flex flex-col';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'text-sm font-medium text-white';
+    titleSpan.textContent = group.hasEmoji ? group.emoji : 'No emoji';
+    textWrapper.appendChild(titleSpan);
+
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'text-xs text-[var(--text-secondary)]';
+    const dishLabel = group.count === 1 ? 'dish' : 'dishes';
+    metaSpan.textContent = `${group.count} ${dishLabel}`;
+    textWrapper.appendChild(metaSpan);
+
+    leading.appendChild(textWrapper);
+
+    const trailing = document.createElement('div');
+    trailing.className = 'flex items-center gap-3 text-xs text-[var(--text-secondary)]';
+
+    const averageSpan = document.createElement('span');
+    averageSpan.textContent = `Avg ${formatCurrency(group.averagePrice)}`;
+    trailing.appendChild(averageSpan);
+
+    const spendSpan = document.createElement('span');
+    spendSpan.textContent = `${formatPercentage(group.spendShare)} of spend`;
+    trailing.appendChild(spendSpan);
+
+    button.appendChild(leading);
+    button.appendChild(trailing);
+
+    button.addEventListener('click', () => {
+        if (selectedEmojiKey === group.key) return;
+        selectedEmojiKey = group.key;
+        renderEmojiCategories(dishes);
+    });
+
+    wrapper.appendChild(button);
+    return wrapper;
+}
+
+function renderEmojiCategoryDetails(group) {
+    const container = document.getElementById('emoji-category-detail');
+    const titleEl = document.getElementById('emoji-category-detail-title');
+    const metaEl = document.getElementById('emoji-category-detail-meta');
+    const listBody = document.getElementById('emoji-category-detail-list');
+
+    if (!container || !titleEl || !metaEl || !listBody) return;
+
+    if (!group) {
+        container.classList.add('hidden');
+        titleEl.textContent = 'Select an emoji category';
+        metaEl.textContent = 'Click a card to see all dishes for that emoji.';
+        listBody.innerHTML = '';
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    const dishLabel = group.count === 1 ? 'dish' : 'dishes';
+    titleEl.textContent = `${group.display} · ${group.count} ${dishLabel}`;
+
+    const shareLabel = formatPercentage(group.share);
+    const spendShareLabel = formatPercentage(group.spendShare);
+    const averagePriceLabel = group.averagePrice ? formatCurrency(group.averagePrice) : '€0.00';
+    metaEl.textContent = `${shareLabel} of dishes · ${spendShareLabel} of spend · Avg price ${averagePriceLabel}`;
+
+    const rows = group.dishes
+        .slice()
+        .sort((a, b) => {
+            const aDate = a.date ? new Date(a.date).getTime() : 0;
+            const bDate = b.date ? new Date(b.date).getTime() : 0;
+            if (bDate !== aDate) return bDate - aDate;
+            const totalDiff = (b.totalCost || 0) - (a.totalCost || 0);
+            if (totalDiff !== 0) return totalDiff;
+            return (b.price || 0) - (a.price || 0);
+        })
+        .map(dish => {
+            const dateLabel = formatDate(dish.date);
+            const priceLabel = dish.price ? formatCurrency(dish.price) : '—';
+            const totalLabel = dish.totalCost ? formatCurrency(dish.totalCost) : '—';
+            return `
+            <tr class="hover:bg-gray-800/60 transition-colors">
+                <td class="px-4 py-3 whitespace-nowrap text-white">${dish.emoji ? `${dish.emoji} ` : ''}${escapeHtml(dish.dishName)}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${escapeHtml(dish.restaurant)}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${dateLabel}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${priceLabel}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${totalLabel}</td>
+            </tr>
+        `;
+        })
+        .join('');
+
+    listBody.innerHTML = rows || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No dishes recorded for this emoji.</td></tr>';
 }
 
 function renderSpendTypeBreakdown(dishes) {
@@ -426,6 +787,19 @@ function setupSearch() {
 function formatCurrency(value) {
     if (!Number.isFinite(value)) return '€0.00';
     return `€${value.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPercentage(value) {
+    if (!Number.isFinite(value) || value <= 0) return '0%';
+    if (value < 0.1) return '<0.1%';
+    return `${value.toFixed(1)}%`;
+}
+
+function formatDate(value) {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function escapeHtml(value) {

@@ -1,6 +1,5 @@
 import {
     calculateSeasonality,
-    calculateCityMix,
     calculateWeekendEffect,
     calculateLocalVsTravelShare,
     checkFirstBite,
@@ -9,6 +8,7 @@ import {
     checkFamilyFeast
 } from './utils/calculators.js';
 import { showLoader, hideLoader } from './utils/loader.js';
+import { flattenDishes, groupDishesByEmoji } from './utils/dish-helpers.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Only run this script on the main page by checking for a unique element
@@ -66,14 +66,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateDashboard(bills) {
-        updateStats(bills);
-        updateInsights(bills);
+        const records = bills.map((fields, index) => ({ id: `bill-${index}`, fields }));
+        const dishes = flattenDishes(records);
+
+        updateStats(bills, dishes);
+        updateInsights(records, dishes);
         updateAchievements(bills);
         updateFavorites(bills);
         updateMap(bills);
     }
 
-    function updateStats(bills) {
+    function updateStats(bills, dishes) {
         const totalSpent = bills.reduce((sum, bill) => sum + (bill.Kokku || 0), 0);
         const billsTracked = bills.length;
         const averageBill = billsTracked > 0 ? totalSpent / billsTracked : 0;
@@ -81,6 +84,31 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-spent').textContent = `€${totalSpent.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('average-bill').textContent = `€${averageBill.toLocaleString('et-EE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         document.getElementById('bills-tracked').textContent = billsTracked;
+
+        const homeTotalDishesNode = document.getElementById('home-total-dishes');
+        const homeDishSummaryNode = document.getElementById('home-dish-summary');
+
+        if (homeTotalDishesNode) {
+            homeTotalDishesNode.textContent = dishes.length.toLocaleString('et-EE');
+        }
+
+        if (homeDishSummaryNode) {
+            if (!dishes.length) {
+                homeDishSummaryNode.textContent = 'Add emoji-tagged dishes to unlock tasty insights.';
+            } else {
+                const uniqueDishNames = new Set(dishes.map(dish => `${dish.dishName}|${dish.restaurant}`)).size;
+                const emojiGroups = groupDishesByEmoji(dishes);
+                const topEmoji = emojiGroups[0];
+                const categoryCount = emojiGroups.length;
+                const categoryLabel = categoryCount === 1 ? 'category' : 'categories';
+                if (topEmoji) {
+                    const shareLabel = formatPercentage(topEmoji.share);
+                    homeDishSummaryNode.textContent = `${uniqueDishNames.toLocaleString('et-EE')} unique dishes across ${categoryCount} emoji ${categoryLabel}. Top: ${topEmoji.display} (${topEmoji.count}, ${shareLabel}).`;
+                } else {
+                    homeDishSummaryNode.textContent = `${uniqueDishNames.toLocaleString('et-EE')} unique dishes across ${categoryCount} emoji ${categoryLabel}.`;
+                }
+            }
+        }
 
         const uniquePlaceIds = new Set();
         let missingPlaceIdCount = 0;
@@ -461,8 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
 
-    function updateInsights(bills) {
-        const records = bills.map(b => ({ fields: b }));
+    function updateInsights(records, dishes) {
 
         // 1. Most Adventurous Month
         const seasonality = calculateSeasonality(records);
@@ -550,11 +577,59 @@ document.addEventListener('DOMContentLoaded', function() {
             localTravelNode.textContent = `${toEuro(localValueRaw)} Local / ${toEuro(travelValueRaw)} Travel`;
         }
 
-        // 5. Top City
-        const cityMix = calculateCityMix(records);
-        const topCity = cityMix.top5.length > 0 ? cityMix.top5[0][0] : 'N/A';
-        document.getElementById('most-ordered-dish').textContent = topCity;
-        document.querySelector('#most-ordered-dish').previousElementSibling.textContent = 'Top City';
+        // 5. Top Dish Emojis
+        const emojiList = document.getElementById('top-dish-emoji-list');
+        const emojiMessage = document.getElementById('top-dish-emoji-message');
+
+        if (emojiList) {
+            emojiList.innerHTML = '';
+
+            if (!dishes.length) {
+                if (emojiMessage) {
+                    emojiMessage.textContent = 'Add emoji to your dishes to see your leading categories.';
+                }
+            } else {
+                const emojiGroups = groupDishesByEmoji(dishes);
+                const topGroups = emojiGroups.slice(0, 3);
+
+                topGroups.forEach(group => {
+                    const pill = document.createElement('span');
+                    pill.className = 'inline-flex items-center gap-2 bg-[var(--background-color)] px-3 py-1 rounded-full border border-[var(--border-color)] text-sm text-white';
+
+                    const emojiSpan = document.createElement('span');
+                    emojiSpan.className = 'text-lg';
+                    emojiSpan.textContent = group.display;
+                    pill.appendChild(emojiSpan);
+
+                    const detailsSpan = document.createElement('span');
+                    detailsSpan.className = 'text-xs text-[var(--text-secondary)]';
+                    const dishLabel = group.count === 1 ? 'dish' : 'dishes';
+                    detailsSpan.textContent = `${group.count} ${dishLabel} · ${formatPercentage(group.share)}`;
+                    pill.appendChild(detailsSpan);
+
+                    emojiList.appendChild(pill);
+                });
+
+                if (emojiMessage) {
+                    const topEmoji = emojiGroups[0];
+                    const categoryCount = emojiGroups.length;
+                    const categoryLabel = categoryCount === 1 ? 'category' : 'categories';
+                    emojiMessage.textContent = `${categoryCount} emoji ${categoryLabel} tracked. ${topEmoji.display} leads with ${formatPercentage(topEmoji.share)} of dishes and ${formatPercentage(topEmoji.spendShare)} of spend.`;
+                }
+            }
+        } else if (emojiMessage) {
+            emojiMessage.textContent = 'Add emoji to your dishes to see your leading categories.';
+        }
+    }
+
+    function formatPercentage(value) {
+        if (!Number.isFinite(value) || value <= 0) {
+            return '0%';
+        }
+        if (value < 0.1) {
+            return '<0.1%';
+        }
+        return `${value.toFixed(1)}%`;
     }
 
     function updateAchievements(bills) {
