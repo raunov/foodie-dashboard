@@ -19,37 +19,36 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Airtable credentials are not fully configured on the server.' });
   }
 
-  // 1. Fetch only "Restoran" activities from the "Tegevused" table using the specified view
-  let tegevusedRecords = [];
-  let offset = null;
-  const baseUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?view=${AIRTABLE_RESTAURANT_VIEW_ID}`;
+  // Get cursor from query parameters for pagination
+  const { cursor } = req.query;
+
+  // 1. Fetch one page of "Restoran" activities from the "Tegevused" table
+  const baseUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TEGEVUSED_TABLE_NAME}?view=${AIRTABLE_RESTAURANT_VIEW_ID}&pageSize=24`;
+  const tegevusedUrl = cursor ? `${baseUrl}&offset=${cursor}` : baseUrl;
 
   try {
-    do {
-      const tegevusedUrl = offset ? `${baseUrl}&offset=${offset}` : baseUrl;
-      const tegevusedResponse = await fetch(tegevusedUrl, {
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-        },
-      });
+    const tegevusedResponse = await fetch(tegevusedUrl, {
+      headers: {
+        'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+      },
+    });
 
-      if (!tegevusedResponse.ok) {
-        const errorData = await tegevusedResponse.text();
-        console.error('Airtable API Error (Tegevused):', errorData);
-        return res.status(tegevusedResponse.status).json({ error: `Airtable API error (Tegevused): ${tegevusedResponse.statusText}` });
-      }
+    if (!tegevusedResponse.ok) {
+      const errorData = await tegevusedResponse.text();
+      console.error('Airtable API Error (Tegevused):', errorData);
+      return res.status(tegevusedResponse.status).json({ error: `Airtable API error (Tegevused): ${tegevusedResponse.statusText}` });
+    }
 
-      const tegevusedData = await tegevusedResponse.json();
-      tegevusedRecords = tegevusedRecords.concat(tegevusedData.records || []);
-      offset = tegevusedData.offset;
-    } while (offset);
+    const tegevusedData = await tegevusedResponse.json();
+    const tegevusedRecords = tegevusedData.records || [];
+    const nextCursor = tegevusedData.offset;
 
-    // 2. Extract linked "Restoran" record IDs
-    const restoranRecordIds = tegevusedRecords.flatMap(record => record.fields.Toidud || []);
+    // 2. Extract linked "Restoran" record IDs from this page only
+    const restoranRecordIds = [...new Set(tegevusedRecords.flatMap(record => record.fields.Toidud || []))];
 
     if (restoranRecordIds.length === 0) {
       // No linked items, just return the filtered activities
-      return res.status(200).json({ records: tegevusedRecords });
+      return res.status(200).json({ records: tegevusedRecords, nextCursor });
     }
 
     // 3. Fetch linked records from the "Restoran" table
@@ -90,11 +89,11 @@ module.exports = async (req, res) => {
         };
     });
 
-    // Set caching headers
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+    // Set caching headers - short cache for fresh data
+    res.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate=59');
     
-    // 5. Send the combined data back
-    res.status(200).json({ records: combinedRecords });
+    // 5. Send the combined data back with the next cursor
+    res.status(200).json({ records: combinedRecords, nextCursor });
 
   } catch (error) {
     console.error(error);
