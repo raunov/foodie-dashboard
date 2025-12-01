@@ -67,6 +67,13 @@ async function loadMoreDishes() {
         const newRecords = data.records || [];
         const nextCursor = data.nextCursor;
 
+        // Handle Global Stats (First Page Only)
+        if (data.stats) {
+            dishesState.totalStats.count = data.stats.totalDishes;
+            dishesState.totalStats.uniqueSpotsCount = data.stats.uniqueSpots;
+            dishesState.hasGlobalStats = true;
+        }
+
         // Process new dishes
         const newDishes = flattenDishes(newRecords);
 
@@ -75,12 +82,12 @@ async function loadMoreDishes() {
         dishesState.cursor = nextCursor;
         dishesState.hasMore = !!nextCursor;
 
-        // Update Stats (Accumulated)
+        // Update Stats
         updateStats(newDishes);
 
         // Render
         renderDishFeed(newDishes);
-        renderMoodBubbles(); // Re-render to update counts
+        renderMoodBubbles();
         renderSidebarInsights();
         updateHeroStats();
 
@@ -89,7 +96,7 @@ async function loadMoreDishes() {
     } finally {
         dishesState.isLoading = false;
         elements.loader.classList.add('hidden');
-        hideLoader(); // Hide global loader
+        hideLoader();
 
         if (!dishesState.hasMore) {
             elements.endMessage.classList.remove('hidden');
@@ -98,21 +105,19 @@ async function loadMoreDishes() {
 }
 
 function updateStats(newDishes) {
-    dishesState.totalStats.count += newDishes.length;
+    if (!dishesState.hasGlobalStats) {
+        dishesState.totalStats.count += newDishes.length;
+        newDishes.forEach(d => {
+            if (d.restaurant) dishesState.totalStats.uniqueSpots.add(d.restaurant);
+        });
+    }
+
     newDishes.forEach(d => {
-        if (d.restaurant) dishesState.totalStats.uniqueSpots.add(d.restaurant);
         dishesState.totalStats.totalSpend += (d.totalCost || 0);
     });
 }
 
-// --- Rendering ---
-
 function renderDishFeed(newDishes) {
-    // If filtering is active, we might need to re-render the whole feed from state
-    // But for infinite scroll, we usually just append. 
-    // Simplified logic: If filter is active, we filter the *entire* state and re-render.
-    // If no filter, we just append the new ones.
-
     if (dishesState.filterEmoji) {
         // Filter active: Clear and re-render all matching items
         elements.feed.innerHTML = '';
@@ -201,8 +206,8 @@ function renderMoodBubbles() {
         const isActive = dishesState.filterEmoji === group.emoji;
 
         btn.className = `flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap snap-start ${isActive
-                ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-white shadow-lg shadow-emerald-500/20'
-                : 'bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600'
+            ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-white shadow-lg shadow-emerald-500/20'
+            : 'bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600'
             }`;
 
         btn.innerHTML = `<span class="text-xl">${group.emoji}</span> <span class="text-sm font-medium capitalize">${getEmojiLabel(group.emoji)}</span> <span class="text-xs opacity-60 ml-1">${group.count}</span>`;
