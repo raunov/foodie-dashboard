@@ -86,6 +86,61 @@ function getNumericField(source, fieldNames) {
     return null;
 }
 
+function parseRatingText(value) {
+    if (typeof value !== 'string') return {};
+
+    const ratingMatch = value.match(/(\d+(?:[.,]\d+)?)/);
+    const rating = ratingMatch ? Number(ratingMatch[1].replace(',', '.')) : null;
+
+    const countMatch = value.match(/\(([\d\s.,]+)\)/);
+    const count = countMatch ? Number(countMatch[1].replace(/[^\d]/g, '')) : null;
+
+    return {
+        rating: Number.isFinite(rating) ? rating : null,
+        count: Number.isFinite(count) ? count : null
+    };
+}
+
+function getRatingInfo(restaurantDetails, recordFields) {
+    const sources = [restaurantDetails, recordFields].filter(Boolean);
+    const ratingFieldNames = ['GooglePlacesRating', 'Hinnang', 'Rating'];
+    const ratingCountFieldNames = [
+        'GooglePlacesUserRatingsTotal',
+        'GooglePlacesRatingCount',
+        'GooglePlacesReviewsCount',
+        'UserRatingsTotal',
+        'UserRatingCount',
+        'RatingCount',
+        'HinnangCount',
+        'Hinnanguid'
+    ];
+
+    let rating = null;
+    let ratingCount = null;
+
+    for (const source of sources) {
+        rating = rating ?? getNumericField(source, ratingFieldNames);
+        ratingCount = ratingCount ?? getNumericField(source, ratingCountFieldNames);
+
+        for (const fieldName of ratingFieldNames) {
+            const rawValue = source[fieldName];
+            const parsed = parseRatingText(rawValue);
+            rating = rating ?? parsed.rating;
+            ratingCount = ratingCount ?? parsed.count;
+        }
+    }
+
+    if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
+        rating = null;
+    }
+
+    if (!Number.isFinite(ratingCount) || ratingCount < 0) {
+        ratingCount = null;
+    }
+
+    return { rating, ratingCount };
+}
+
 function formatPriceLevel(priceLevel) {
     if (priceLevel == null) return null;
 
@@ -159,10 +214,7 @@ function processActivityData(records) {
             getTrimmedStringField(restaurantDetails, ['GooglePlacesId']) ||
             getTrimmedStringField(record.fields, ['GooglePlacesId']);
 
-        const ratingRaw =
-            getNumericField(restaurantDetails, ['GooglePlacesRating']) ??
-            getNumericField(record.fields, ['GooglePlacesRating']);
-        const rating = Number.isFinite(ratingRaw) && ratingRaw >= 0 && ratingRaw <= 5 ? ratingRaw : null;
+        const { rating, ratingCount } = getRatingInfo(restaurantDetails, record.fields);
 
         const priceLevelRaw =
             getTrimmedStringField(restaurantDetails, ['priceLevel']) ||
@@ -185,10 +237,26 @@ function processActivityData(records) {
             photoUrls: photoUrls,
             emoji: record.fields.Emoji || '',
             rating: rating,
+            ratingCount,
             priceLevel,
             googlePlacesId
         };
     });
+}
+
+function renderRatingStars(rating) {
+    if (!Number.isFinite(rating)) return '';
+
+    const roundedRating = Math.round(rating * 2) / 2;
+    const fullStars = Math.floor(roundedRating);
+    const hasHalfStar = roundedRating - fullStars >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+
+    const fullStarHtml = '★'.repeat(fullStars);
+    const halfStarHtml = hasHalfStar ? '⯨' : '';
+    const emptyStarHtml = '☆'.repeat(emptyStars);
+
+    return `${fullStarHtml}${halfStarHtml}${emptyStarHtml}`;
 }
 
 function groupActivitiesByPlaceId(activities) {
@@ -218,6 +286,8 @@ function groupActivitiesByPlaceId(activities) {
         const averageRating = ratings.length
             ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
             : null;
+        const ratingActivity = sortedActivities.find(activity => Number.isFinite(activity.ratingCount));
+        const ratingCount = ratingActivity?.ratingCount ?? null;
 
         const averageSpend = group.activities.length
             ? group.activities.reduce((sum, activity) => sum + (activity.spend || 0), 0) / group.activities.length
@@ -245,6 +315,7 @@ function groupActivitiesByPlaceId(activities) {
             priceLevel: lastVisit?.priceLevel || null,
             visitCount: group.activities.length,
             averageRating,
+            ratingCount,
             averageSpend,
             averageCostPerPerson,
             lastVisitDate: lastVisit?.date || null,
@@ -288,8 +359,12 @@ function renderActivityList() {
             ? `<a href="${a.googleMapsUri}" class="text-emerald-400 hover:text-emerald-300 flex items-center text-lg leading-none" target="_blank" rel="noopener noreferrer" aria-label="Open ${locationLabel} in Google Maps">📍<span class="sr-only">Open in Google Maps</span></a>`
             : '';
 
+        const ratingCountLabel = Number.isFinite(a.ratingCount)
+            ? `(${Number(a.ratingCount).toLocaleString()})`
+            : '';
+        const ratingStars = renderRatingStars(a.averageRating);
         const ratingHtml = Number.isFinite(a.averageRating)
-            ? `<span class="flex items-center gap-1 text-sm text-yellow-300" aria-label="Average rating ${a.averageRating.toFixed(1)} out of 5">⭐ ${a.averageRating.toFixed(1)}</span>`
+            ? `<span class="flex items-center gap-1 text-sm text-yellow-300" aria-label="Average rating ${a.averageRating.toFixed(1)} out of 5">${a.averageRating.toFixed(1)} ${ratingStars} ${ratingCountLabel}</span>`
             : '';
 
         const priceLevelHtml = a.priceLevel
@@ -400,9 +475,13 @@ function initializeMap(token, activities) {
             el.style.borderRadius = '50%';
             el.style.border = '2px solid white';
 
+            const popupRatingLabel = Number.isFinite(a.averageRating)
+                ? `Avg rating ${a.averageRating.toFixed(1)}${Number.isFinite(a.ratingCount) ? ` (${Number(a.ratingCount).toLocaleString()})` : ''}`
+                : null;
+
             const popupParts = [
                 `${a.visitCount} visit${a.visitCount === 1 ? '' : 's'}`,
-                Number.isFinite(a.averageRating) ? `Avg rating ${a.averageRating.toFixed(1)}` : null,
+                popupRatingLabel,
                 Number.isFinite(a.averageCostPerPerson) ? `Avg cost €${a.averageCostPerPerson.toFixed(2)}/person` : null
             ].filter(Boolean);
 
