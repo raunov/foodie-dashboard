@@ -278,8 +278,7 @@ function renderActivityList() {
         const summaryParts = [
             `${a.visitCount} visit${a.visitCount === 1 ? '' : 's'}`,
             Number.isFinite(a.averageRating) ? `Avg rating ${a.averageRating.toFixed(1)}` : null,
-            Number.isFinite(a.averageCostPerPerson) ? `Avg cost €${a.averageCostPerPerson.toFixed(2)}/person` : null,
-            a.lastVisitDate ? `Last visit ${a.lastVisitDate.toLocaleDateString()}` : null
+            Number.isFinite(a.averageCostPerPerson) ? `Avg cost €${a.averageCostPerPerson.toFixed(2)}/person` : null
         ].filter(Boolean);
 
         const summaryLabel = summaryParts.join(' · ');
@@ -404,8 +403,7 @@ function initializeMap(token, activities) {
             const popupParts = [
                 `${a.visitCount} visit${a.visitCount === 1 ? '' : 's'}`,
                 Number.isFinite(a.averageRating) ? `Avg rating ${a.averageRating.toFixed(1)}` : null,
-                Number.isFinite(a.averageCostPerPerson) ? `Avg cost €${a.averageCostPerPerson.toFixed(2)}/person` : null,
-                a.lastVisitDate ? `Last visit ${a.lastVisitDate.toLocaleDateString()}` : null
+                Number.isFinite(a.averageCostPerPerson) ? `Avg cost €${a.averageCostPerPerson.toFixed(2)}/person` : null
             ].filter(Boolean);
 
             const popup = new mapboxgl.Popup({
