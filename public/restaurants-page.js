@@ -378,9 +378,12 @@ function renderActivityList() {
                 <div class="mt-2 text-sm text-gray-400">
                     <p class="font-semibold text-gray-300">Recent visits</p>
                     <ul class="list-disc list-inside space-y-1">
-                        ${a.recentVisits.map(visit => `
-                            <li>${visit.date.toLocaleDateString()} · €${visit.spend.toFixed(2)}</li>
-                        `).join('')}
+                        ${a.recentVisits.map(visit => {
+                            const visitSpendLabel = visit.peopleCount && visit.peopleCount > 0
+                                ? `€${(visit.spend / visit.peopleCount).toFixed(2)} 👤${visit.peopleCount}`
+                                : `€${visit.spend.toFixed(2)}`;
+                            return `<li>${visit.date.toLocaleDateString()} · ${visitSpendLabel}</li>`;
+                        }).join('')}
                     </ul>
                 </div>
             `
