@@ -1,9 +1,11 @@
 import { showLoader, hideLoader } from './utils/loader.js';
+import { flattenDishes } from './utils/dish-helpers.js';
 
 let currentPage = 1;
 const itemsPerPage = 10;
 let allActivities = [];
 let currentActivities = [];
+let restaurantStats = {};
 let map;
 const markers = {};
 
@@ -36,6 +38,11 @@ async function initializePage() {
         const records = airtableData.records || [];
         allActivities = processActivityData(records);
         allActivities.sort((a, b) => b.date - a.date);
+
+        // Calculate restaurant stats
+        const allDishes = flattenDishes(records);
+        restaurantStats = calculateRestaurantStats(allDishes);
+
         currentActivities = [...allActivities];
 
         initializeMap(tokenData.token, allActivities);
@@ -165,6 +172,8 @@ function processActivityData(records) {
 
         const priceLevel = formatPriceLevel(priceLevelRaw);
 
+        const visitComments = getTrimmedStringField(record.fields, ['Kommentaar', 'Kommentaarid', 'Notes', 'Märkmed', 'Comment']);
+
         return {
             id: record.id,
             name: displayName,
@@ -180,9 +189,37 @@ function processActivityData(records) {
             photoUrls: photoUrls,
             emoji: record.fields.Emoji || '',
             rating: rating,
-            priceLevel
+            priceLevel,
+            visitComments
         };
     });
+}
+
+function calculateRestaurantStats(dishes) {
+    const stats = {};
+
+    dishes.forEach(dish => {
+        const restName = dish.restaurant;
+        if (!restName || restName === 'Unknown restaurant') return;
+
+        if (!stats[restName]) {
+            stats[restName] = { dishCounts: {} };
+        }
+
+        const dishName = dish.dishName;
+        stats[restName].dishCounts[dishName] = (stats[restName].dishCounts[dishName] || 0) + 1;
+    });
+
+    const result = {};
+    for (const [restName, data] of Object.entries(stats)) {
+        const sortedDishes = Object.entries(data.dishCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name, count]) => name); // store just names
+
+        result[restName] = sortedDishes;
+    }
+    return result;
 }
 
 
@@ -245,6 +282,26 @@ function renderActivityList() {
                     <p class="text-sm text-gray-400">${spendLabel}</p>
                     <p class="text-sm text-gray-400">Date: ${a.date.toLocaleDateString()}</p>
                 </div>
+                
+                ${(() => {
+                const topDishes = restaurantStats[a.restaurantName];
+                if (topDishes && topDishes.length > 0) {
+                    return `
+                        <div class="mt-3 text-sm">
+                            <span class="text-yellow-400 font-medium">🏆 Favorites:</span>
+                            <span class="text-gray-300 ml-1">${topDishes.join(', ')}</span>
+                        </div>`;
+                }
+                return '';
+            })()}
+
+                ${a.visitComments ? `
+                    <div class="mt-2 text-sm bg-gray-700/50 p-2 rounded border border-gray-600/50">
+                        <span class="text-gray-400 font-medium">📝 Note:</span>
+                        <span class="text-gray-300 italic ml-1">"${a.visitComments}"</span>
+                    </div>
+                ` : ''}
+
             </div>
             ${galleryHTML}
         `;
@@ -291,7 +348,7 @@ function initializeMap(token, activities) {
         zoom: 1
     });
 
-    map.on('load', function() {
+    map.on('load', function () {
         map.resize();
     });
 
@@ -319,16 +376,16 @@ function initializeMap(token, activities) {
                 : `€${a.spend.toFixed(2)}`;
 
             const popup = new mapboxgl.Popup({
-                    offset: 25,
-                    className: 'foodie-popup'
-                })
+                offset: 25,
+                className: 'foodie-popup'
+            })
                 .setHTML(`<h3>${a.name}</h3><p>${spendPopupLabel}</p>`);
 
             markers[a.id] = new mapboxgl.Marker(el)
                 .setLngLat([lng, lat])
                 .setPopup(popup)
                 .addTo(map);
-            
+
             bounds.extend([lng, lat]);
         }
     });
@@ -392,7 +449,7 @@ function setupEventListeners() {
         const searchTerm = searchInput.value.trim().toLowerCase();
         const sortValue = sortBy.value;
 
-        let filtered = allActivities.filter(a => 
+        let filtered = allActivities.filter(a =>
             (a.name || '').toLowerCase().includes(searchTerm) ||
             (a.restaurantName || '').toLowerCase().includes(searchTerm) ||
             (a.city || '').toLowerCase().includes(searchTerm) ||
