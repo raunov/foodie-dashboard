@@ -189,21 +189,28 @@ function formatPriceLevel(priceLevel) {
     return mappedLevel == null ? null : coerceLevel(mappedLevel);
 }
 
-function extractDishNames(fields = {}) {
-    const linkedDishNames = Array.isArray(fields.Toidud)
-        ? fields.Toidud
-            .map(dish => (typeof dish === 'string' ? dish.trim() : ''))
-            .filter(Boolean)
-        : [];
+function isLikelyAirtableRecordId(value) {
+    return typeof value === 'string' && /^rec[a-zA-Z0-9]{14}$/.test(value.trim());
+}
 
+function extractDishNames(fields = {}) {
     const detailDishNames = Array.isArray(fields.ToidudDetails)
         ? fields.ToidudDetails
-            .map(detail => detail?.fields?.Toode || detail?.fields?.Nimetus || '')
+            .map(detail => {
+                const detailFields = detail?.fields || {};
+                return detailFields.Toode || detailFields.Nimetus || detailFields.Dish || detailFields.Name || '';
+            })
             .map(name => (typeof name === 'string' ? name.trim() : ''))
             .filter(Boolean)
         : [];
 
-    return Array.from(new Set([...linkedDishNames, ...detailDishNames]));
+    const linkedDishNames = Array.isArray(fields.Toidud)
+        ? fields.Toidud
+            .map(dish => (typeof dish === 'string' ? dish.trim() : ''))
+            .filter(dish => dish && !isLikelyAirtableRecordId(dish))
+        : [];
+
+    return Array.from(new Set([...detailDishNames, ...linkedDishNames]));
 }
 
 function processActivityData(records) {
