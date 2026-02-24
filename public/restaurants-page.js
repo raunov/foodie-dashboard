@@ -189,9 +189,34 @@ function formatPriceLevel(priceLevel) {
     return mappedLevel == null ? null : coerceLevel(mappedLevel);
 }
 
+function isLikelyAirtableRecordId(value) {
+    return typeof value === 'string' && /^rec[a-zA-Z0-9]{14}$/.test(value.trim());
+}
+
+function extractDishNames(fields = {}) {
+    const detailDishNames = Array.isArray(fields.ToidudDetails)
+        ? fields.ToidudDetails
+            .map(detail => {
+                const detailFields = detail?.fields || {};
+                return detailFields.Toode || detailFields.Nimetus || detailFields.Dish || detailFields.Name || '';
+            })
+            .map(name => (typeof name === 'string' ? name.trim() : ''))
+            .filter(Boolean)
+        : [];
+
+    const linkedDishNames = Array.isArray(fields.Toidud)
+        ? fields.Toidud
+            .map(dish => (typeof dish === 'string' ? dish.trim() : ''))
+            .filter(dish => dish && !isLikelyAirtableRecordId(dish))
+        : [];
+
+    return Array.from(new Set([...detailDishNames, ...linkedDishNames]));
+}
+
 function processActivityData(records) {
     return records.map(record => {
         const restaurantDetails = record.fields.ToidudDetails?.[0]?.fields;
+        const dishes = extractDishNames(record.fields);
         const photos = record.fields.Photos || [];
         const attachments = record.fields.Attachments || [];
 
@@ -239,7 +264,8 @@ function processActivityData(records) {
             rating: rating,
             ratingCount,
             priceLevel,
-            googlePlacesId
+            googlePlacesId,
+            dishes
         };
     });
 }
@@ -382,7 +408,20 @@ function renderActivityList() {
                             const visitSpendLabel = visit.peopleCount && visit.peopleCount > 0
                                 ? `€${(visit.spend / visit.peopleCount).toFixed(2)} 👤${visit.peopleCount}`
                                 : `€${visit.spend.toFixed(2)}`;
-                            return `<li>${visit.date.toLocaleDateString()} · ${visitSpendLabel}</li>`;
+                            const visitDishes = Array.isArray(visit.dishes) ? visit.dishes : [];
+                            const maxDishesToShow = 3;
+                            const visibleDishes = visitDishes.slice(0, maxDishesToShow);
+                            const hiddenCount = Math.max(visitDishes.length - maxDishesToShow, 0);
+                            const dishesLabel = visitDishes.length
+                                ? `${visibleDishes.join(', ')}${hiddenCount > 0 ? ` +${hiddenCount} more` : ''}`
+                                : 'No dishes logged';
+
+                            return `
+                                <li>
+                                    <div>${visit.date.toLocaleDateString()} · ${visitSpendLabel}</div>
+                                    <div class="text-xs text-gray-500 ml-5">${dishesLabel}</div>
+                                </li>
+                            `;
                         }).join('')}
                     </ul>
                 </div>
